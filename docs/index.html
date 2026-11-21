@@ -404,7 +404,7 @@ const Sfx = (() => {
   function voice(name) {
     if (!ok()) return;
     const now = ac.currentTime;
-    if (lastVoice[name] !== undefined && now - lastVoice[name] < (name === 'atata' ? 0.7 : 0.4)) return;
+    if (lastVoice[name] !== undefined && now - lastVoice[name] < (name === 'atata' ? 1.2 : 0.4)) return;   // don't pile up the ? box voice
     const clip = voiceBuf[name] || (name === 'giggle' ? voiceBuf.laugh : null);
     if (!clip) return;
     lastVoice[name] = now;
