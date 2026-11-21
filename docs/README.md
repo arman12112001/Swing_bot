@@ -5,7 +5,8 @@ A small side-scrolling platformer made for phones. Your girlfriend is the hero (
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
 - Power-ups: 🎂 **red velvet cake**, 🍕 **pizza slice** and 🥦 **broccoli**
-- Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, and friends **peeping out of green pipes**
+- Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, friends **peeping out of green pipes**, a friend **on a cloud** dropping spiky balls, **cannons** firing rockets and **fish** leaping through bridges
+- Fire: spinning **fire bars** (lots in level 3) and **lava bubbles** jumping out of the lava
 - Every level has every power-up, every enemy type, moving platforms, spikes and checkpoints
 - At the end of each level she meets you at the castle and you **kiss** 💋
 - Cute **voices**: she cries when she loses a life, laughs when she meets you, says "a-ta-taa!" at `?` boxes, grumbles at broccoli and giggles at pizza and cake
@@ -46,7 +47,7 @@ Power-ups come out of `?` blocks when you hit them from below.
 | | What it does |
 |---|---|
 | 🎂 Red velvet cake | She grows big and chubby for **8 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
-| 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **40 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
+| 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **30 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
 | 🥦 Broccoli | Oops! She shrinks to **tiny** for 6 seconds (`BROCCOLI_SECONDS`), then grows back. |
 | ❤️ Heart | +1 life. 100 coins also give +1 life. |
 
@@ -57,7 +58,11 @@ Power-ups come out of `?` blocks when you hit them from below.
 | Flyer (big wings) | Stomp it once and it loses its wings and walks. Stomp again to finish it. |
 | Tortoise (green shell) | Stomp it and it hides in its shell. Touch the shell to **kick** it; a sliding shell knocks out every enemy it hits. Watch out when it bounces back! The tortoise comes out again if you leave the shell alone. |
 | Friend in a pipe | Comes up out of green pipes. You can't stomp it, so wait until it goes down; it stays hidden while you stand right next to the pipe. Fireballs, shells and cake power beat it. |
-| 🐉 Dragon (end of level 3) | Breathes fire: jump over the low flames, stay on the ground for the high ones. **Stomp her head** (2 damage) or hit her with **pizza fireballs** (1 damage). She has 6 health (`DRAGON_HP`) and gets faster when she's hurt. Beat her and the gate to the castle opens. |
+| ☁️ Friend on a cloud | Follows her from above and drops **spiky balls**. Stomp the cloud to get rid of it. Never stomp a spiky ball (spikes!); use fireballs, a shell or cake power. |
+| 🚀 Cannon | Fires rockets at her. Jump over them or stomp them. |
+| 🐟 Fish | Leap up through the gap in bridges. Stomp them or dodge. |
+| 🔥 Fire bar / lava bubble | Can't be beaten, only dodged: time your jump. |
+| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks. **Stomp her head** (2 damage). Pizza fireballs only do 0.5. She has 10 health (`DRAGON_HP`) and gets faster and fires three flames at once when she's hurt. Beat her and the gate to the castle opens. |
 
 ## Saved progress and game over
 
@@ -104,9 +109,9 @@ const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
 const START_LIVES         = 3;
 const CAKE_SECONDS        = 8;
-const PIZZA_SECONDS       = 40;
+const PIZZA_SECONDS       = 30;
 const BROCCOLI_SECONDS    = 6;
-const DRAGON_HP           = 6;
+const DRAGON_HP           = 10;
 ```
 
 The name under the home-screen icon comes from `name` / `short_name` in `manifest.json`.
@@ -125,7 +130,8 @@ Y  friend peeping out of a pipe: put it on the tile right above the pipe's LEFT 
 E  walker   F  fast walker   J  hopper   W  flyer   T  tortoise
 M  moving platform, left/right 4 tiles   (MMM = 3 tiles wide)
 V  moving platform, up/down 3 tiles      (VVV = 3 tiles wide)
-~  lava (draw it where the ground would be, in a pit)
+~  lava (draw it where the ground would be, in a pit)    !  lava with a jumping lava bubble
+A  friend on a cloud   N  cannon   I  fire bar block   H  fish jump up here (top row, above a bridge or pit)
 D  dragon boss      L  gate that opens when the dragon is beaten
 S  start            C  checkpoint flag   G  goal flagpole   K  castle (5 tiles wide)
 ```
@@ -184,7 +190,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v10'` in `sw.js` to a new name such as `'love-run-v11'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v11'` in `sw.js` to a new name such as `'love-run-v12'`.
 
 ## Troubleshooting
 
