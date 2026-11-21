@@ -899,7 +899,7 @@ function parseLevel(map) {
 function makePlayer(x, y) {
   return { x, y, w: PW, h: PH, vx: 0, vy: 0, face: 1, onGround: false, onPlatform: null, coyote: 0, jumpBuffer: 0,
     jumping: false, prevBottom: y + PH, invuln: 0, phase: 0, pose: 'idle', dead: false,
-    fire: G.carryFire, megaT: 0, wantBig: false, big: false, grow: 0, throwT: 0 };
+    fire: G.carryFire, megaT: 0, wantBig: false, big: false, grow: 0, throwT: 0, stompGrace: 0 };
 }
 function makeEnemy(s, idx) {
   const n = Math.max(1, faces.enemies.length);
@@ -1326,6 +1326,7 @@ function updatePlayer(dt) {
   }
   if (p.onGround) G.stompCombo = 0;
   if (p.invuln > 0) p.invuln -= dt;
+  if (p.stompGrace > 0) p.stompGrace -= dt;
   // pickups + hazards
   const tx0 = Math.floor(p.x / TILE), tx1 = Math.floor((p.x + p.w - 0.01) / TILE);
   const ty0 = Math.floor(p.y / TILE), ty1 = Math.floor((p.y + p.h - 0.01) / TILE);
@@ -1423,20 +1424,35 @@ function updateShell(e, dt) {
   if (e.y > ROWS * TILE + 60) e.removed = true;
 }
 
+// How far the drawn head sticks up above an enemy's hitbox (cut-out faces are tall).
+function headExtra(e) {
+  if (e.type === 'Y' || (e.type === 'T' && e.state !== 'walk')) return 0;
+  const f = faces.enemies[e.faceIdx % Math.max(1, faces.enemies.length)];
+  const a = f ? f.aspect : 1;
+  return e.type === 'T' ? Math.max(0, 19 + 27 * a - e.h) : Math.max(0, 16 + 30 * a - e.h);
+}
 function playerVsEnemies() {
   const p = G.player, inp = readInput();
-  const bounce = () => { p.vy = -(inp.jump ? PHYS.stompHeld : PHYS.stomp); p.jumping = inp.jump; p.onGround = false; };
+  const bounce = () => { p.vy = -(inp.jump ? PHYS.stompHeld : PHYS.stomp); p.jumping = inp.jump; p.onGround = false; p.stompGrace = 0.15; };
   for (const e of G.enemies) {
     if (!alive(e)) continue;
     const b = enemyBox(e);
-    if (!b || !overlap(p, b, 3)) continue;
+    if (!b) continue;
+    // Generous "head" box (includes the drawn head, a bit wider) for stomps and kicks,
+    // and a smaller "body" box for getting hurt, so touching the side of a head doesn't kill her.
+    const ex = headExtra(e), top = b.y - ex, fullH = b.h + ex;
+    const headBox = { x: b.x - 6, y: top, w: b.w + 12, h: fullH };
+    if (!overlap(p, headBox, 0)) continue;
     if (p.megaT > 0) { G.megaCombo++; killEnemy(e, Math.min(8000, 200 * G.megaCombo)); continue; }
-    const stomp = p.vy > 0 && (p.prevBottom <= b.y + 18 || p.y + p.h - b.y < 20);
-    if (e.type === 'Y') { hurtPlayer('enemy'); if (G.state !== 'play') return; continue; }
+    const hurtBox = { x: b.x + 5, y: b.y + 8, w: Math.max(6, b.w - 10), h: Math.max(6, b.h - 8) };
+    const hurts = overlap(p, hurtBox, 0) && p.stompGrace <= 0;
+    const midY = top + fullH * 0.55;
+    const stomp = p.vy > 0 && (p.prevBottom <= midY || p.y + p.h <= midY);
+    if (e.type === 'Y') { if (hurts) { hurtPlayer('enemy'); if (G.state !== 'play') return; } continue; }
     if (e.type === 'T' && e.state === 'shell') { kickShell(e, p); if (stomp) bounce(); continue; }
     if (e.type === 'T' && e.state === 'slide') {
       if (stomp) { e.state = 'shell'; e.shellT = 0; Sfx.stomp(); bounce(); continue; }
-      if (e.kickGrace > 0) continue;
+      if (e.kickGrace > 0 || !hurts) continue;
       hurtPlayer('enemy'); if (G.state !== 'play') return; continue;
     }
     if (stomp) {
@@ -1444,7 +1460,7 @@ function playerVsEnemies() {
       else if (e.type === 'W' && e.winged) { e.winged = false; e.vy = 0; Sfx.stomp(); awardAt(stompPoints(), e.x + e.w / 2, e.y - 10); puff(e.x + e.w / 2, e.y + 10, 6); }
       else squashEnemy(e);
       bounce();
-    } else {
+    } else if (hurts) {
       hurtPlayer('enemy');
       if (G.state !== 'play') return;
     }
