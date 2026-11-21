@@ -201,11 +201,13 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v13'` in `sw.js` to a new name such as `'love-run-v14'`.
+**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N**, so you can see which version a phone is running. With every change, bump both `CACHE = 'love-run-v14'` in `sw.js` and `GAME_VERSION = 14` in `index.html` to the next number. GitHub Pages can take a minute or two to publish a change.
+
+Phones that still have a version older than 14 show the old game one more time: open it, wait a few seconds, close it completely (swipe it away from recent apps) and open it again.
 
 ## Troubleshooting
 
 - **No sound:** tap the screen once. Phones only allow sound after a touch. Also check the 🔊 button and the phone's media volume.
 - **Feels slow on an old phone:** lower `MAX_DPR` in `index.html` to `1.5`. The game also lowers it by itself if frames drop.
-- **A face didn't change:** check the file name (lowercase, e.g. `enemy3.png`), then reopen the app twice or bump the `CACHE` version.
+- **A face didn't change:** check the file name (lowercase, e.g. `enemy3.png`), then bump `CACHE` in `sw.js` and close and reopen the app.
 - **Want to start over from Level 1:** tap **New Game** on the title screen.

@@ -191,6 +191,9 @@ const FACE_TWEAKS = {};
 // or 1.5 if an old phone feels slow. The game also lowers it by itself if frames drop.
 const MAX_DPR = 2;
 
+// Shown on the title screen so you can tell which version a phone is running. Keep it equal to CACHE in sw.js.
+const GAME_VERSION = 14;
+
 /* ============================================================================
    2) LEVELS
    ----------------------------------------------------------------------------
@@ -662,7 +665,7 @@ function waitForServiceWorker(timeout) {
     let done = false;
     const fin = (v) => { if (!done) { done = true; resolve(v); } };
     navigator.serviceWorker.addEventListener('controllerchange', () => fin(true));
-    navigator.serviceWorker.register('sw.js')
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
       .then(() => { if (navigator.serviceWorker.controller) fin(true); })
       .catch(() => fin(false));
     if (navigator.serviceWorker.controller) fin(true);
@@ -2937,11 +2940,12 @@ function controlsHint() {
     : '← → / A D run · Space / ↑ jump (hold = higher) · F / X throw fire · P pause · M mute';
 }
 function showTitle() {
+  if (updateReady) { location.reload(); return; }       // a newer version arrived while the game was open
   G.state = 'title';
   loadLevel(0);
   G.camX = 0; G.panDir = 1;
   const u = progress.level;
-  const stats = best ? 'Best score: ' + best : '';
+  const stats = (best ? 'Best score: ' + best + ' · ' : '') + 'Version ' + GAME_VERSION;
   if (u > 0) {
     showScreen({ title: GAME_TITLE, faces: ['hero'], sub: GAME_TAGLINE, btn1: 'Continue · Level ' + (u + 1) + ' ▶', pulse: true,
       onBtn1: continueGame, onTap: continueGame, btn2: 'New Game', onBtn2: startGame, stats, hint: controlsHint() });
@@ -3018,6 +3022,21 @@ btnMute.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); bt
 btnPause.addEventListener('click', (e) => { e.stopPropagation(); pause(); btnPause.blur(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearInput(); pause(); } });
 
+// Updates: every time the app comes back to the screen, ask for a newer version. When one is installed
+// while the game is open, reload on the title screen (never in the middle of a level).
+let updateReady = false;
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return;                        // first install, the page is already the newest
+    updateReady = true;
+    if (G.state === 'title') location.reload();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
+  });
+}
+
 /* ============================================================================
    16) MAIN LOOP (+ automatic quality drop if a phone struggles)
    ============================================================================ */
@@ -3086,6 +3105,7 @@ window.__loveRun = {
   eatCake: () => eatCake(G.player), eatPizza: () => eatPizza(G.player), eatBroccoli: () => eatBroccoli(G.player),
   hurtBoss: (n) => damageBoss(n || 1, true),
   eatShield: () => eatShield(G.player),
+  showTitle, get updateReady() { return updateReady; },
   simulate(seconds, botFn, until) {
     const steps = Math.round(seconds / MAX_STEP);
     const stop = until || ((g) => g.state !== 'play' && g.state !== 'flag');

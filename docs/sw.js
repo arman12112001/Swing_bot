@@ -1,6 +1,8 @@
 /* Service worker: makes the game work offline and installable.
-   Bump CACHE when you want every phone to drop its old copy immediately. */
-const CACHE = 'love-run-v13';
+   The game page itself is always loaded fresh from the internet when there is a connection
+   (the saved copy is only used offline), so a new version shows up on the next open.
+   Bump CACHE (and GAME_VERSION in index.html) with every update. */
+const CACHE = 'love-run-v14';
 const CORE = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 const FACE_NAMES = ['hero', 'me', 'dragon'];
 for (let i = 1; i <= 10; i++) FACE_NAMES.push('enemy' + i);
@@ -40,6 +42,20 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // The game page: network first, saved copy only when offline.
+  if (req.mode === 'navigate' || /\/(index\.html)?$/.test(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const res = await fetch(req, { cache: 'no-cache' });
+        if (res.ok) await cache.put('./index.html', res.clone());
+        return res;
+      } catch (e) {
+        return (await cache.match('./index.html')) || (await cache.match('./')) || Response.error();
+      }
+    })());
+    return;
+  }
   const isFace = /\/faces\/[^/]+\.(png|jpe?g)$/i.test(url.pathname);
   const isSound = /\/sounds\/[^/]+\.(mp3|m4a)$/i.test(url.pathname);
   const optional = isFace || isSound;
