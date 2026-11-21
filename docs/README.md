@@ -4,15 +4,18 @@ A small side-scrolling platformer made for phones. Your girlfriend is the hero (
 
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
-- Power-ups: 🎂 **red velvet cake**, 🍕 **pizza slice** and 🥦 **broccoli**
+- Power-ups: 🎂 **red velvet cake**, 🍕 **pizza slice**, 🥦 **broccoli** and 🌈 **heart shield**, each lasting 30 seconds
+- **5 hearts at the start of every level**. After losing a heart she restarts from the last checkpoint, and every coin and power-up block comes back.
+- At each checkpoint your face pops up at the top: *"Let's go girl.. i am waiting for u ❤️"*
 - Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, friends **peeping out of green pipes**, a friend **on a cloud** dropping spiky balls, **cannons** firing rockets and **fish** leaping through bridges
 - Fire: spinning **fire bars** (lots in level 3) and **lava bubbles** jumping out of the lava
 - Every level has every power-up, every enemy type, moving platforms, spikes and checkpoints
 - At the end of each level she meets you at the castle and you **kiss** 💋
+- **Big ending** after level 3: you walk off together hand in hand into a sunset while fireworks spell her name in the sky
 - Cute **voices**: she cries when she loses a life, laughs when she meets you, says "a-ta-taa!" at `?` boxes, grumbles at broccoli and giggles at pizza and cake
 - **Progress is saved** after each level, so you can continue instead of starting over
 - Works offline and installs to the home screen (PWA: `manifest.json` + `sw.js`)
-- Sounds are generated in code, so there are no audio files. The 🔊 button (or `M`) mutes.
+- Sound effects are generated in code; the voices are short clips in `sounds/`. The 🔊 button (or `M`) mutes.
 
 ```
 docs/
@@ -46,10 +49,13 @@ Power-ups come out of `?` blocks when you hit them from below.
 
 | | What it does |
 |---|---|
-| 🎂 Red velvet cake | She grows big and chubby for **8 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
+| 🎂 Red velvet cake | She grows big and chubby for **30 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
 | 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **30 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
-| 🥦 Broccoli | Oops! She shrinks to **tiny** for 6 seconds (`BROCCOLI_SECONDS`), then grows back. |
-| ❤️ Heart | +1 life. 100 coins also give +1 life. |
+| 🥦 Broccoli | Oops! She shrinks to **tiny** for **30 seconds** (`BROCCOLI_SECONDS`), then grows back. |
+| 🌈 Heart shield | **Rainbow invincibility** for **30 seconds** (`SHIELD_SECONDS`): nothing can hurt her (enemies, fire bars, lava bubbles, flames, spikes), enemies she touches die, and touching the dragon hurts the dragon. Falling into a pit or into lava still costs a heart. A rainbow bar at the top shows how long is left. |
+| ❤️ Heart | +1 heart. 100 coins also give +1 heart. |
+
+Every level starts with **5 hearts**. Losing one sends her back to the last checkpoint (or the start), and all the coins, `?` blocks and power-up blocks in the level come back, so she can power up again.
 
 | Enemy | How to beat it |
 |---|---|
@@ -62,7 +68,7 @@ Power-ups come out of `?` blocks when you hit them from below.
 | 🚀 Cannon | Fires rockets at her. Jump over them or stomp them. |
 | 🐟 Fish | Leap up through the gap in bridges. Stomp them or dodge. |
 | 🔥 Fire bar / lava bubble | Can't be beaten, only dodged: time your jump. |
-| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks. **Stomp her head** (2 damage). Pizza fireballs only do 0.5. She has 10 health (`DRAGON_HP`) and gets faster and fires three flames at once when she's hurt. Beat her and the gate to the castle opens. |
+| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs only do 0.5. Touching her with the heart shield or cake power also does 2. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
 
 ## Saved progress and game over
 
@@ -107,12 +113,17 @@ const GAME_TAGLINE        = "Run, jump and reach the castle!";
 const WIN_MESSAGE         = "You made it! ❤️";
 const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
-const START_LIVES         = 3;
-const CAKE_SECONDS        = 8;
+const START_LIVES         = 5;     // hearts at the start of every level
+const CAKE_SECONDS        = 30;
 const PIZZA_SECONDS       = 30;
-const BROCCOLI_SECONDS    = 6;
-const DRAGON_HP           = 10;
+const BROCCOLI_SECONDS    = 30;
+const SHIELD_SECONDS      = 30;
+const DRAGON_HP           = 6;
+const HER_NAME            = "MY LOVE";   // spelled in fireworks at the very end
+const CHECKPOINT_MESSAGE  = "Let's go girl.. i am waiting for u ❤️";
 ```
+
+`HER_NAME` looks best at up to about 10 letters. Longer names are shrunk to fit the screen.
 
 The name under the home-screen icon comes from `name` / `short_name` in `manifest.json`.
 
@@ -123,7 +134,7 @@ Levels are in `const LEVELS = [ … ]` in `index.html`. Each level is 13 strings
 ```
 .  empty            #  ground            B  brick (breaks when hit from below)
 ?  coin block       *  1-UP heart block  X  stone block (use for stairs)
-R  red velvet cake block   Z  pizza block   Q  broccoli block
+R  red velvet cake block   Z  pizza block   Q  broccoli block   +  heart shield block
 o  coin             =  thin platform (you can jump up through it)      ^  spikes
 P  pipe (draw it 2 wide, any height)
 Y  friend peeping out of a pipe: put it on the tile right above the pipe's LEFT half
@@ -190,7 +201,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v11'` in `sw.js` to a new name such as `'love-run-v12'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v12'` in `sw.js` to a new name such as `'love-run-v13'`.
 
 ## Troubleshooting
 
