@@ -246,9 +246,9 @@ const LEVELS = [
    3) ENGINE CONSTANTS (tuning)
    ============================================================================ */
 const TILE = 32, ROWS = 13, MAX_STEP = 1 / 120;
-const PW = 22, PH = 58;               // hero hitbox
-const BIG_W = 34, BIG_H = 86;         // hero hitbox after cake
-const TINY_W = 14, TINY_H = 36;       // hero hitbox after broccoli
+const PW = 24, PH = 50;               // hero hitbox (short and chubby)
+const BIG_W = 36, BIG_H = 76;         // hero hitbox after cake
+const TINY_W = 15, TINY_H = 31;       // hero hitbox after broccoli
 const EW = 24, EH = 40;               // walker hitbox (a bit shorter than the hero)
 const TW = 26, TH = 42, SHELL_H = 22; // tortoise / shell
 const PEEP_RISE = 50;                 // how far a pipe friend rises
@@ -271,9 +271,10 @@ const TAU = Math.PI * 2;
 
 // Bodies: she is a white panda-bear, you are a brown bear.
 const HERO_OUTFIT = { fur: '#ffffff', leg: '#ffffff', foot: '#3f2a23', ear: '#3f2a23', earInner: '#3f2a23', line: '#3f2a23',
-  bow: '#3f2a23', bowDark: '#2a1a15', purse: '#f6cf5a', purseDark: '#e2a93b', strap: '#e2a93b' };
+  bow: '#3f2a23', bowDark: '#2a1a15', purse: '#f6cf5a', purseDark: '#e2a93b', strap: '#e2a93b',
+  bodyW: 28, bodyTop: -25, legH: 9, legW: 9, legX: 6.5, headW: 30 };     // short and chubby
 const FIRE_OUTFIT = Object.assign({}, HERO_OUTFIT, { fire: true });
-const ME_OUTFIT   = { fur: '#d8a383', leg: '#d8a383', foot: null, ear: '#d8a383', earInner: '#7a4f3e', line: '#4a2e26', bow: null, purse: null };
+const ME_OUTFIT   = { fur: '#d8a383', leg: '#d8a383', foot: null, ear: '#d8a383', earInner: '#7a4f3e', line: '#4a2e26', bow: null, purse: null, leanDrop: 9 };
 
 const THEMES = {
   day: {
@@ -2024,18 +2025,19 @@ function drawPerson(g, x, y, o) {
   if (o.throwT > 0) af = 1.55;
   const sc = o.scale || 1;
   g.save(); g.translate(x, y); if (sc !== 1) g.scale(sc, sc);
-  const bw = 22 + fat * 14, top = -31 + bob, bot = -7 + bob * 0.4, legX = 5 + fat * 4;
+  const legH = st.legH || 11.5, legW = st.legW || 8, legTop = -legH;
+  const bw = (st.bodyW || 22) + fat * 14, top = (st.bodyTop || -31) + bob, bot = legTop + 4.5 + bob * 0.4, legX = (st.legX || 5) + fat * 4;
   const leg = (lx, step) => {                          // short legs that step (feet stay visible)
-    const lift = Math.max(0, step) * 3 + tuck * 3, x0 = lx + step * 2.2 * d - 4, y0 = -11.5 - lift;
-    rr(g, x0, y0, 8, 11.5, 4); g.fillStyle = st.leg; g.fill();
-    if (st.foot) { g.save(); rr(g, x0, y0, 8, 11.5, 4); g.clip(); g.fillStyle = st.foot; g.fillRect(x0 - 1, y0 + 7, 10, 6); g.restore(); }
-    rr(g, x0, y0, 8, 11.5, 4); g.lineWidth = 1.5; g.strokeStyle = st.line; g.stroke();
+    const lift = Math.max(0, step) * 3 + tuck * 3, x0 = lx + step * 2.2 * d - legW / 2, y0 = legTop - lift;
+    rr(g, x0, y0, legW, legH, legW / 2); g.fillStyle = st.leg; g.fill();
+    if (st.foot) { g.save(); rr(g, x0, y0, legW, legH, legW / 2); g.clip(); g.fillStyle = st.foot; g.fillRect(x0 - 1, y0 + legH - 4.5, legW + 2, 6); g.restore(); }
+    rr(g, x0, y0, legW, legH, legW / 2); g.lineWidth = 1.5; g.strokeStyle = st.line; g.stroke();
   };
   leg(-d * legX, stepB);
   const shY = top + 8;
   const backHand = drawBearLimb(g, -d * (bw / 2 - 2), shY, 7, -d * ab, 6.5, st.fur, st.line);
   leg(d * legX, stepF);
-  rr(g, -bw / 2, top, bw, bot - top, Math.min(11, bw / 2)); g.fillStyle = st.fur; g.fill(); g.lineWidth = 1.7; g.strokeStyle = st.line; g.stroke();
+  rr(g, -bw / 2, top, bw, bot - top, Math.min(13, bw / 2, (bot - top) / 2)); g.fillStyle = st.fur; g.fill(); g.lineWidth = 1.7; g.strokeStyle = st.line; g.stroke();
   if (st.purse) {                                      // her little yellow side purse
     const px = -d * (bw / 2 - 1.5), py = bot - 5;
     g.strokeStyle = st.strap; g.lineWidth = 1.8; g.beginPath(); g.moveTo(d * (bw / 2 - 5), top + 3.5); g.lineTo(px, py - 3); g.stroke();
@@ -2050,7 +2052,7 @@ function drawPerson(g, x, y, o) {
   }
   if (o.rose) drawRose(g, backHand.x, backHand.y);
   const lean = o.lean || 0;
-  drawHead(g, o.face, d * 5 * lean, top + 6 + lean * 1.5, o.headW || 32, tilt + d * 0.3 * lean, null, d, sc, st);
+  drawHead(g, o.face, d * 5 * lean, top + 6 + lean * (st.leanDrop || 1.5), o.headW || st.headW || 32, tilt + d * 0.3 * lean, null, d, sc, st);
   g.restore();
 }
 function drawWings(g, w, h) {
@@ -2357,7 +2359,7 @@ function drawHero(g, p) {
     g.globalAlpha = 1;
   }
   drawPerson(g, cx, feet, { face: faces.hero, outfit: p.fire ? FIRE_OUTFIT : HERO_OUTFIT, dir: p.face, pose: p.pose, phase: p.phase, t: G.time,
-    scale: sc, fat: gr, headW: 32, throwT: p.throwT, lean: p.lean });
+    scale: sc, fat: gr, throwT: p.throwT, lean: p.lean });
 }
 
 function drawWorld() {
