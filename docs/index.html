@@ -196,7 +196,7 @@ const MAX_DPR = 2;
 
 // Shown small in the top-right corner of the title screen. Raise it by 1 with every update,
 // together with CACHE in sw.js ('love-run-game-v' + the same number).
-const GAME_VERSION = 1;
+const GAME_VERSION = 2;
 
 /* ============================================================================
    2) LEVELS
@@ -1733,12 +1733,24 @@ function makeBoss(s) {
     minX: s.x - 6 * TILE - BOSS_W / 2, maxX: s.x + TILE - BOSS_W / 2, deadT: 0 };
 }
 function bossAlive() { const b = G.boss; return !!(b && b.active && !b.dead); }
-function damageBoss(n, force, iframes) {
+// Fire, shells and power-up touches can take her down to 10% health; only a stomp on her head can finish her.
+const DRAGON_LAST_HP = DRAGON_HP * 0.1;
+function damageBoss(n, force, iframes, stomp) {
   const b = G.boss;
   if (!b || b.dead || (!force && b.hurtT > 0)) return;
-  b.hp -= n; b.hurtT = iframes || 1.0; Sfx.bossHit(); puff(b.x + b.w / 2, b.y + 10, 8);
+  if (!stomp && b.hp <= DRAGON_LAST_HP + 1e-6) {               // she's at her last 10%: only a jump on her head works now
+    b.hurtT = 0.3; puff(b.x + b.w / 2, b.y + 10, 4);
+    if (!(b.hintT > G.time)) { b.hintT = G.time + 1.6; popText('JUMP ON HER HEAD!', b.x + b.w / 2, b.y - 46, '#ffe08a', 18); }
+    return;
+  }
+  b.hp = stomp ? b.hp - n : Math.max(DRAGON_LAST_HP, b.hp - n);
+  b.hurtT = iframes || 1.0; Sfx.bossHit(); puff(b.x + b.w / 2, b.y + 10, 8);
   if (n >= 1) popText('-' + n, b.x + b.w / 2, b.y - 40, '#ffd1dc', 18);
-  if (b.hp <= 0) defeatBoss();
+  if (b.hp <= 0) { defeatBoss(); return; }
+  if (!stomp && b.hp <= DRAGON_LAST_HP + 1e-6 && !b.lastHint) {
+    b.lastHint = true; b.hintT = G.time + 1.6;
+    G.banner = { title: 'JUMP ON HER HEAD!', sub: 'Only a stomp can finish her now', t: 0, dur: 2.4 };
+  }
 }
 function defeatBoss() {
   const b = G.boss;
@@ -1777,7 +1789,7 @@ function updateBoss(dt) {
   if (!b) return;
   if (b.dead) { b.deadT += dt; b.vy = Math.min(b.vy + 1500 * dt, 1000); b.y += b.vy * dt; b.x += b.vx * dt; return; }
   if (!b.active) {
-    if (b.x < G.camX + viewW - 60) { b.active = true; Sfx.roar(); G.banner = { title: 'DRAGON!', sub: 'Stomp her head! (pizza fire only tickles her)', t: 0, dur: 2.6 }; }
+    if (b.x < G.camX + viewW - 60) { b.active = true; Sfx.roar(); G.banner = { title: 'DRAGON!', sub: 'Stomp her head! Only a stomp can finish her', t: 0, dur: 2.6 }; }
     else return;
   }
   b.t += dt; if (b.hurtT > 0) b.hurtT -= dt; if (b.mouthT > 0) b.mouthT -= dt;
@@ -1804,7 +1816,7 @@ function playerVsBoss() {
   if (!overlap(p, { x: b.x - 14, y: b.y - 40, w: b.w + 28, h: b.h + 40 }, 0)) return;
   const away = (p.x + p.w / 2 < b.x + b.w / 2) ? -1 : 1;
   if (p.vy > 0 && p.prevBottom <= b.y + 14) {            // landed on her head
-    damageBoss(2);
+    damageBoss(2, false, 0, true);
     const inp = readInput();
     p.vy = -(inp.jump ? 820 : 640); p.jumping = inp.jump; p.onGround = false; p.vx = away * 200; p.stompGrace = 0.35; Sfx.stomp();
     return;
@@ -3151,7 +3163,7 @@ window.__loveRun = {
   get viewW() { return viewW; },
   startGame, startLevel, continueGame,
   eatCake: () => eatCake(G.player), eatPizza: () => eatPizza(G.player), eatBroccoli: () => eatBroccoli(G.player),
-  hurtBoss: (n) => damageBoss(n || 1, true),
+  hurtBoss: (n, notStomp) => damageBoss(n || 1, true, 0, !notStomp),
   eatShield: () => eatShield(G.player),
   showTitle, get updateReady() { return updateReady; },
   simulate(seconds, botFn, until) {

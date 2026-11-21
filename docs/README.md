@@ -68,7 +68,7 @@ Every level starts with **3 hearts** (`START_LIVES`). Losing one sends her back 
 | 🚀 Cannon | Fires rockets at her. Jump over them or stomp them. |
 | 🐟 Fish | Leap up through the gap in bridges. Stomp them or dodge. |
 | 🔥 Fire bar / lava bubble | Can't be beaten, only dodged: time your jump. |
-| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. Every third time she breathes **three flames at once** in a fan. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs do 0.5, and there's a pizza block right before the fight. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
+| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. Every third time she breathes **three flames at once** in a fan. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs do 0.5, and there's a pizza block right before the fight. Fire (and shells or power-up touches) can only take her down to **10% health**: the **final blow must be a jump on her head**, and the game tells her so with "JUMP ON HER HEAD!". She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
 
 ## Saved progress and game over
 
@@ -201,7 +201,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N** in small text in the top-right corner, so you can see which version a phone is running. With every change, raise both `GAME_VERSION = 1` in `index.html` and `CACHE = 'love-run-game-v1'` in `sw.js` to the next number (2, 3, …). GitHub Pages can take a minute or two to publish a change.
+**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N** in small text in the top-right corner, so you can see which version a phone is running. With every change, raise both `GAME_VERSION` in `index.html` and the number in `CACHE = 'love-run-game-v…'` in `sw.js` to the next number (they're both 2 now). GitHub Pages can take a minute or two to publish a change.
 
 Phones that had a version from before the automatic updates show the old game one more time: open it, wait a few seconds, close it completely (swipe it away from recent apps) and open it again.
 
