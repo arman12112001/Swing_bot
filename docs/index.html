@@ -246,9 +246,9 @@ const LEVELS = [
    3) ENGINE CONSTANTS (tuning)
    ============================================================================ */
 const TILE = 32, ROWS = 13, MAX_STEP = 1 / 120;
-const PW = 24, PH = 50;               // hero hitbox (short and chubby)
-const BIG_W = 36, BIG_H = 76;         // hero hitbox after cake
-const TINY_W = 15, TINY_H = 31;       // hero hitbox after broccoli
+const PW = 24, PH = 46;               // hero hitbox (short and chubby)
+const BIG_W = 36, BIG_H = 70;         // hero hitbox after cake
+const TINY_W = 15, TINY_H = 29;       // hero hitbox after broccoli
 const EW = 24, EH = 40;               // walker hitbox (a bit shorter than the hero)
 const TW = 26, TH = 42, SHELL_H = 22; // tortoise / shell
 const PEEP_RISE = 50;                 // how far a pipe friend rises
@@ -272,9 +272,9 @@ const TAU = Math.PI * 2;
 // Bodies: she is a white panda-bear, you are a brown bear.
 const HERO_OUTFIT = { fur: '#ffffff', leg: '#ffffff', foot: '#3f2a23', ear: '#3f2a23', earInner: '#3f2a23', line: '#3f2a23',
   bow: '#3f2a23', bowDark: '#2a1a15', purse: '#f6cf5a', purseDark: '#e2a93b', strap: '#e2a93b',
-  bodyW: 28, bodyTop: -25, legH: 9, legW: 9, legX: 6.5, headW: 30 };     // short and chubby
+  bodyW: 28, bodyTop: -21, legH: 7.5, legW: 9, legX: 6.5, headW: 29 };   // short and chubby
 const FIRE_OUTFIT = Object.assign({}, HERO_OUTFIT, { fire: true });
-const ME_OUTFIT   = { fur: '#d8a383', leg: '#d8a383', foot: null, ear: '#d8a383', earInner: '#7a4f3e', line: '#4a2e26', bow: null, purse: null, leanDrop: 9 };
+const ME_OUTFIT   = { fur: '#d8a383', leg: '#d8a383', foot: null, ear: '#d8a383', earInner: '#7a4f3e', line: '#4a2e26', bow: null, purse: null, leanDrop: 12 };
 
 const THEMES = {
   day: {

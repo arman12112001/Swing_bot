@@ -184,7 +184,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v9'` in `sw.js` to a new name such as `'love-run-v10'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v10'` in `sw.js` to a new name such as `'love-run-v11'`.
 
 ## Troubleshooting
 
