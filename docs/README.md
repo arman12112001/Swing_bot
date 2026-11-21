@@ -1,6 +1,6 @@
 # Super Love Run
 
-A small side-scrolling platformer made for phones. Your girlfriend is the hero, your friends are the enemies, and you're waiting at the castle at the end.
+A small side-scrolling platformer made for phones. Your girlfriend is the hero (a cute white panda-bear with her face), your friends are the enemies, and you (a brown bear with your face) are waiting at the castle at the end.
 
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
@@ -8,6 +8,7 @@ A small side-scrolling platformer made for phones. Your girlfriend is the hero, 
 - Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, and friends **peeping out of green pipes**
 - Every level has every power-up, every enemy type, moving platforms, spikes and checkpoints
 - At the end of each level she meets you at the castle and you **kiss** 💋
+- Cute **voices**: she cries when she loses a life, laughs when she meets you, says "a-ta-taa!" at `?` boxes, grumbles at broccoli and giggles at pizza and cake
 - **Progress is saved** after each level, so you can continue instead of starting over
 - Works offline and installs to the home screen (PWA: `manifest.json` + `sw.js`)
 - Sounds are generated in code, so there are no audio files. The 🔊 button (or `M`) mutes.
@@ -18,6 +19,7 @@ docs/
 ├── manifest.json     app name, icon, landscape/fullscreen for "Add to Home screen"
 ├── sw.js             offline cache
 ├── icons/            home-screen icons (192, 512, maskable 512)
+├── sounds/           optional voice clips (see Voices)
 └── faces/            the face cut-outs
     ├── hero.png      the player (your girlfriend)
     ├── me.png        you, waiting at the castle
@@ -44,7 +46,7 @@ Power-ups come out of `?` blocks when you hit them from below.
 | | What it does |
 |---|---|
 | 🎂 Red velvet cake | She grows big and chubby for **8 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
-| 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **1 minute** (`PIZZA_SECONDS`). A hit during that minute only takes the pizza away, not a life. |
+| 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **40 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
 | 🥦 Broccoli | Oops! She shrinks to **tiny** for 6 seconds (`BROCCOLI_SECONDS`), then grows back. |
 | ❤️ Heart | +1 life. 100 coins also give +1 life. |
 
@@ -57,9 +59,26 @@ Power-ups come out of `?` blocks when you hit them from below.
 | Friend in a pipe | Comes up out of green pipes. You can't stomp it, so wait until it goes down; it stays hidden while you stand right next to the pipe. Fireballs, shells and cake power beat it. |
 | 🐉 Dragon (end of level 3) | Breathes fire: jump over the low flames, stay on the ground for the high ones. **Stomp her head** (2 damage) or hit her with **pizza fireballs** (1 damage). She has 6 health (`DRAGON_HP`) and gets faster when she's hurt. Beat her and the gate to the castle opens. |
 
-## Saved progress
+## Saved progress and game over
 
-When you finish a level, the game saves it on the phone. Next time, the title screen shows **Continue · Level 2** (or 3), with your score from that point, or **New Game**. Progress, best score and mute are stored in the browser, so they're kept per phone and are lost if you clear Chrome's site data.
+- When you finish a level, the game saves the level you're on. Next time, the title screen shows **Continue · Level 2** (or 3) or **New Game**.
+- Starting from Level 1 (New Game) resets the save, so it never offers a level you haven't reached in your current game.
+- After **Game Over** you get two choices: **Start from Level N** (the level you were on) or **Start from Level 1**.
+- The save, best score and mute are stored in the browser, so they're kept per phone and are lost if you clear Chrome's site data.
+
+## Voices
+
+The game makes little cartoon voices by itself (no files needed). To use your own instead, for example your real laughs recorded on your phone, put short clips in `docs/sounds/` with these names (`.mp3` or `.m4a`):
+
+| File | When it plays |
+|---|---|
+| `cry.mp3` | she loses a life |
+| `laugh.mp3` | she meets you at the castle |
+| `giggle.mp3` | she eats pizza or red velvet cake (uses `laugh` if missing) |
+| `atata.mp3` | she hits a `?` box ("a-ta-taa!") |
+| `angry.mp3` | she eats broccoli |
+
+Any clip you don't add keeps the built-in voice. Clips need the game to be online (GitHub Pages or Netlify), not opened as a file. Only use recordings you made or have permission to use, because the site is public.
 
 ## Swap the faces
 
@@ -86,7 +105,7 @@ const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
 const START_LIVES         = 3;
 const CAKE_SECONDS        = 8;
-const PIZZA_SECONDS       = 60;
+const PIZZA_SECONDS       = 40;
 const BROCCOLI_SECONDS    = 6;
 const DRAGON_HP           = 6;
 ```
@@ -166,7 +185,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v3'` in `sw.js` to a new name such as `'love-run-v4'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v4'` in `sw.js` to a new name such as `'love-run-v5'`.
 
 ## Troubleshooting
 
