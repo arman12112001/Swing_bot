@@ -75,7 +75,7 @@ The voices are short clips in `docs/sounds/`, cut from your Bubu sounds mp3:
 | `cry.mp3` | she loses a life | 12–14 |
 | `laugh.mp3` | she meets you at the castle | 17.35–19.70 (laughing) |
 | `giggle.mp3` | she eats pizza or red velvet cake | 17.35–18.50 (shorter laugh) |
-| `atata.mp3` | she hits a `?` box | 6–8 |
+| `atata.mp3` | she hits a `?` box | 5.5–7.5 |
 | `angry.mp3` | she eats broccoli | 10.20–11.15 ("hmph hmph") |
 
 To change a voice, replace that file with another short `.mp3` or `.m4a` clip with the same name. A missing clip just stays silent. Clips need the game to be online (GitHub Pages or Netlify), not opened as a file. After replacing clips, bump `CACHE` in `sw.js` so installed copies pick them up.
@@ -184,7 +184,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v8'` in `sw.js` to a new name such as `'love-run-v9'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v9'` in `sw.js` to a new name such as `'love-run-v10'`.
 
 ## Troubleshooting
 
