@@ -1,6 +1,4 @@
-# Voice clips (optional)
-
-Drop short clips here to replace the built-in cute voices. Use exactly these names (`.mp3` or `.m4a`):
+# Voice clips
 
 | File | When it plays |
 |---|---|
@@ -10,5 +8,5 @@ Drop short clips here to replace the built-in cute voices. Use exactly these nam
 | `atata.mp3` | she hits a `?` box ("a-ta-taa!") |
 | `angry.mp3` | she eats broccoli |
 
-Keep them short (1–2 seconds). Recording your own voices on your phone works great.
-After adding files, bump `CACHE` in `sw.js` so installed copies pick them up.
+Replace any file with another short clip (`.mp3` or `.m4a`, same name) to change that voice.
+After replacing clips, bump `CACHE` in `sw.js` so installed copies pick them up.

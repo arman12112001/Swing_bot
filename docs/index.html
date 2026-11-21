@@ -159,7 +159,7 @@ const NAMES = { hero: "My Love", me: "Me" };
 
 // Photos live in this folder: hero.png, me.png, enemy1.png ... enemy10.png (.jpg also works)
 const FACE_DIR = "faces/";
-// Optional voice clips (mp3 or m4a): cry, laugh, giggle, atata, angry. Missing ones use built-in cute voices.
+// Voice clips (mp3 or m4a): cry, laugh, giggle, atata, angry. Replace the files to change the voices.
 const SOUND_DIR = "sounds/";
 const MAX_ENEMY_FACES = 10;
 
@@ -246,9 +246,9 @@ const LEVELS = [
    3) ENGINE CONSTANTS (tuning)
    ============================================================================ */
 const TILE = 32, ROWS = 13, MAX_STEP = 1 / 120;
-const PW = 22, PH = 54;               // hero hitbox
-const BIG_W = 34, BIG_H = 80;         // hero hitbox after cake
-const TINY_W = 14, TINY_H = 33;       // hero hitbox after broccoli
+const PW = 22, PH = 58;               // hero hitbox
+const BIG_W = 34, BIG_H = 86;         // hero hitbox after cake
+const TINY_W = 14, TINY_H = 36;       // hero hitbox after broccoli
 const EW = 24, EH = 40;               // walker hitbox (a bit shorter than the hero)
 const TW = 26, TH = 42, SHELL_H = 22; // tortoise / shell
 const PEEP_RISE = 50;                 // how far a pipe friend rises
@@ -270,9 +270,10 @@ const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Ar
 const TAU = Math.PI * 2;
 
 // Bodies: she is a white panda-bear, you are a brown bear.
-const HERO_OUTFIT = { fur: '#ffffff', belly: '#f1ebe8', leg: '#4a2c24', ear: '#4a2c24', earInner: '#4a2c24', line: '#3d2520', bow: '#ff4d79', bowDark: '#c2185b' };
-const FIRE_OUTFIT = { fur: '#ffffff', belly: '#fff1e0', leg: '#4a2c24', ear: '#4a2c24', earInner: '#4a2c24', line: '#3d2520', bow: '#ff9f1c', bowDark: '#d9480f', fire: true };
-const ME_OUTFIT   = { fur: '#d8a48a', belly: '#e8bda5', leg: '#d8a48a', ear: '#d8a48a', earInner: '#4a2c24', line: '#3d2520', bow: null };
+const HERO_OUTFIT = { fur: '#ffffff', leg: '#ffffff', foot: '#3f2a23', ear: '#3f2a23', earInner: '#3f2a23', line: '#3f2a23',
+  bow: '#3f2a23', bowDark: '#2a1a15', purse: '#f6cf5a', purseDark: '#e2a93b', strap: '#e2a93b' };
+const FIRE_OUTFIT = Object.assign({}, HERO_OUTFIT, { fire: true });
+const ME_OUTFIT   = { fur: '#d8a383', leg: '#d8a383', foot: null, ear: '#d8a383', earInner: '#7a4f3e', line: '#4a2e26', bow: null, purse: null };
 
 const THEMES = {
   day: {
@@ -398,58 +399,16 @@ const Sfx = (() => {
     decodeVoices();
   }
   function ok() { return forceOk || (ac && !muted && ac.state === 'running'); }
-  // One "syllable" of a cute cartoon voice: a buzzy tone shaped by vowel formants.
-  function syl(f0, dur, at, o) {
-    if (!ok()) return;
-    o = o || {};
-    const t0 = ac.currentTime + (at || 0), vol = o.vol || 1;
-    const src = ac.createOscillator(); src.type = 'sawtooth';
-    src.frequency.setValueAtTime(f0, t0);
-    if (o.to) src.frequency.exponentialRampToValueAtTime(o.to, t0 + dur);
-    const lfo = ac.createOscillator(), lg = ac.createGain();
-    lfo.frequency.value = o.vibRate || 7; lg.gain.value = o.vib || f0 * 0.025; lfo.connect(lg); lg.connect(src.frequency);
-    const out = ac.createGain();
-    out.gain.setValueAtTime(0.0001, t0); out.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
-    out.gain.setValueAtTime(vol, t0 + Math.max(0.025, dur - 0.05)); out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    for (const [fq, q, gain] of [[o.F1 || 750, 4, 1.6], [o.F2 || 1250, 6, 1.1], [o.F3 || 2700, 8, 0.5]]) {
-      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q;
-      const fg = ac.createGain(); fg.gain.value = gain; src.connect(bp); bp.connect(fg); fg.connect(out);
-    }
-    if (o.rough) { const am = ac.createOscillator(), ag = ac.createGain(); am.frequency.value = o.rough; ag.gain.value = vol * 0.55; am.connect(ag); ag.connect(out.gain); am.start(t0); am.stop(t0 + dur + 0.05); }
-    out.connect(master);
-    src.start(t0); src.stop(t0 + dur + 0.05); lfo.start(t0); lfo.stop(t0 + dur + 0.05);
-  }
-  const VOICES = {
-    laugh() {      // "hehehehe" from both of you
-      [640, 620, 600, 575, 550].forEach((f, i) => { const t = i * 0.12; noise(0.035, { vol: 0.05, freq: 3200, at: t }); syl(f, 0.09, t + 0.02, { to: f * 0.92, F1: 480, F2: 2100, F3: 2900, vol: 0.5 }); });
-      [262, 250, 240, 230].forEach((f, i) => syl(f, 0.1, 0.07 + i * 0.13, { to: f * 0.9, F1: 520, F2: 1500, vol: 0.35 }));
-    },
-    giggle() {     // quick "hihihi" for yummy food
-      [760, 820, 780, 730].forEach((f, i) => { const t = i * 0.085; noise(0.02, { vol: 0.04, freq: 3500, at: t }); syl(f, 0.065, t + 0.015, { to: f * 1.05, F1: 380, F2: 2500, F3: 3200 }); });
-    },
-    cry() {        // "waaah... waah" + sniffles
-      syl(700, 0.75, 0, { to: 430, vib: 30, vibRate: 6.5, F1: 850, F2: 1350, rough: 5, vol: 0.32 });
-      syl(620, 0.55, 0.85, { to: 380, vib: 25, vibRate: 6, F1: 850, F2: 1300, rough: 6, vol: 0.32 });
-      noise(0.07, { vol: 0.05, freq: 3500, at: 1.5 }); noise(0.07, { vol: 0.05, freq: 3500, at: 1.66 });
-    },
-    atata() {      // "a-ta-taa!"
-      syl(620, 0.07, 0, { F1: 800, F2: 1300, vol: 0.3 });
-      noise(0.015, { vol: 0.05, freq: 4500, at: 0.08 }); syl(760, 0.07, 0.095, { F1: 800, F2: 1300, vol: 0.3 });
-      noise(0.015, { vol: 0.05, freq: 4500, at: 0.175 }); syl(900, 0.2, 0.19, { to: 990, F1: 820, F2: 1350, vol: 0.3 });
-    },
-    angry() {      // "hmph! grrr"
-      syl(330, 0.13, 0, { to: 280, F1: 320, F2: 900, vib: 4, vol: 0.3 });
-      syl(230, 0.45, 0.17, { to: 200, F1: 520, F2: 1050, rough: 28, vib: 3, vol: 0.3 });
-    },
-  };
+  // Voice clips from sounds/ (cry, laugh, giggle, atata, angry). A missing clip simply stays silent.
   function voice(name) {
     if (!ok()) return;
     const now = ac.currentTime;
     if (lastVoice[name] !== undefined && now - lastVoice[name] < (name === 'atata' ? 0.7 : 0.4)) return;
-    lastVoice[name] = now;
     const clip = voiceBuf[name] || (name === 'giggle' ? voiceBuf.laugh : null);
-    if (clip) { const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = clip; g.gain.value = 1; src.connect(g); g.connect(master); src.start(); return; }
-    VOICES[name]();
+    if (!clip) return;
+    lastVoice[name] = now;
+    const src = ac.createBufferSource(), g = ac.createGain();
+    src.buffer = clip; g.gain.value = 0.6; src.connect(g); g.connect(master); src.start();
   }
   function tone(f, dur, o) {
     if (!ok()) return;
@@ -485,7 +444,7 @@ const Sfx = (() => {
       ac = off; master = off.createGain(); master.gain.value = 0.55; master.connect(off.destination);
       noiseBuf = off.createBuffer(1, 22050, 44100); const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
       forceOk = true; muted = false;
-      try { if (VOICES[name]) VOICES[name](); else this[name](); } finally { forceOk = false; [ac, master, noiseBuf, muted] = keep; }
+      try { this[name](); } finally { forceOk = false; [ac, master, noiseBuf, muted] = keep; }
       const d = (await off.startRendering()).getChannelData(0);
       let peak = 0, sum = 0, n = 0;
       for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; if (v > 0.001) { sum += v * v; n++; } }
@@ -2044,41 +2003,54 @@ function drawBow(g, x, y, st) {
   g.moveTo(x, y); g.lineTo(x + 6, y - 3.6); g.lineTo(x + 6, y + 3.6); g.closePath(); g.fill(); g.stroke();
   g.fillStyle = st.bowDark; g.beginPath(); g.arc(x, y, 1.9, 0, TAU); g.fill();
 }
-// A chubby cartoon bear body with the photo face on top.
+function drawPurse(g, x, y, st) {
+  rr(g, x - 5.5, y - 4, 11, 8.5, 3); g.fillStyle = st.purse; g.fill(); g.lineWidth = 1.3; g.strokeStyle = st.line; g.stroke();
+  g.beginPath(); g.moveTo(x - 5.5, y - 0.8); g.quadraticCurveTo(x, y + 2.6, x + 5.5, y - 0.8); g.strokeStyle = st.purseDark; g.lineWidth = 1.2; g.stroke();
+  g.fillStyle = st.line; g.beginPath(); g.arc(x, y + 0.9, 0.9, 0, TAU); g.fill();
+}
+// A chubby bean-shaped bear body (with real little legs) and the photo face on top.
 function drawPerson(g, x, y, o) {
   const d = o.dir >= 0 ? 1 : -1, st = o.outfit, fat = o.fat || 0;
-  let bob = 0, lf = 0, lb = 0, af = 0, ab = 0, tilt = 0;
+  let bob = 0, af = 0, ab = 0, tilt = 0, stepF = 0, stepB = 0, tuck = 0;
   switch (o.pose) {
-    case 'run': { const s = Math.sin(o.phase); lf = s * 0.8; lb = -s * 0.8; af = -s * 0.9; ab = s * 0.9; bob = -Math.abs(Math.sin(o.phase)) * 1.6; tilt = d * 0.06; break; }
-    case 'jump': lf = 0.9; lb = -0.5; af = 2.6; ab = -0.6; tilt = -d * 0.08; break;
-    case 'fall': lf = 0.35; lb = -0.35; af = 2.1; ab = 1.5; break;
-    case 'slide': lf = 0.3; lb = 0.05; af = 2.95; ab = 2.75; break;
-    case 'wave': af = 2.5 + Math.sin(o.t * 9) * 0.45; ab = 0.35; bob = Math.sin(o.t * 3) * 0.4; break;
-    case 'dead': lf = 0.6; lb = -0.6; af = 2.8; ab = -2.8; break;
-    default: bob = Math.sin(o.t * 2.6) * 0.5; af = 0.15; ab = -0.15;
+    case 'run': { const s = Math.sin(o.phase); stepF = s; stepB = -s; af = -s * 0.9; ab = s * 0.9; bob = -Math.abs(s) * 1.4; tilt = d * 0.05; break; }
+    case 'jump': tuck = 1; af = 2.6; ab = -0.5; tilt = -d * 0.08; break;
+    case 'fall': tuck = 0.5; af = 2.1; ab = 1.4; break;
+    case 'slide': tuck = 0.3; af = 2.95; ab = 2.75; break;
+    case 'wave': af = 2.5 + Math.sin(o.t * 9) * 0.45; ab = 0.3; bob = Math.sin(o.t * 3) * 0.4; break;
+    case 'dead': tuck = 0.6; af = 2.8; ab = -2.8; break;
+    default: bob = Math.sin(o.t * 2.6) * 0.5; af = 0.25; ab = -0.25;
   }
   if (o.throwT > 0) af = 1.55;
   const sc = o.scale || 1;
   g.save(); g.translate(x, y); if (sc !== 1) g.scale(sc, sc);
-  const bw = 11 + fat * 8, bh = 12 + fat * 2, cy = -13 + bob - fat;
-  const hipY = cy + 5 + fat, shY = cy - 5, legX = 4.5 * (1 + fat * 0.5);
-  g.fillStyle = st.fur; g.strokeStyle = st.line; g.lineWidth = 1.3;
-  g.beginPath(); g.arc(-d * (bw - 0.5), cy + 4, 3.2, 0, TAU); g.fill(); g.stroke();          // little tail
-  drawBearLimb(g, -d * legX, hipY, 4.5, -d * lb * 0.8, 7, st.leg, st.line);
-  const backHand = drawBearLimb(g, -d * (bw - 2.5), shY, 7, -d * ab, 6, st.fur, st.line);
-  g.beginPath(); g.ellipse(0, cy, bw, bh, 0, 0, TAU); g.fillStyle = st.fur; g.fill(); g.lineWidth = 1.6; g.strokeStyle = st.line; g.stroke();
-  g.fillStyle = st.belly; g.beginPath(); g.ellipse(d * 1.5, cy + 3, bw * 0.55, bh * 0.52, 0, 0, TAU); g.fill();
-  drawBearLimb(g, d * legX, hipY, 4.5, -d * lf * 0.8, 7, st.leg, st.line);
-  const hand = drawBearLimb(g, d * (bw - 2.5), shY, 7, -d * af, 6, st.fur, st.line);
+  const bw = 22 + fat * 14, top = -31 + bob, bot = -7 + bob * 0.4, legX = 5 + fat * 4;
+  const leg = (lx, step) => {                          // short legs that step (feet stay visible)
+    const lift = Math.max(0, step) * 3 + tuck * 3, x0 = lx + step * 2.2 * d - 4, y0 = -11.5 - lift;
+    rr(g, x0, y0, 8, 11.5, 4); g.fillStyle = st.leg; g.fill();
+    if (st.foot) { g.save(); rr(g, x0, y0, 8, 11.5, 4); g.clip(); g.fillStyle = st.foot; g.fillRect(x0 - 1, y0 + 7, 10, 6); g.restore(); }
+    rr(g, x0, y0, 8, 11.5, 4); g.lineWidth = 1.5; g.strokeStyle = st.line; g.stroke();
+  };
+  leg(-d * legX, stepB);
+  const shY = top + 8;
+  const backHand = drawBearLimb(g, -d * (bw / 2 - 2), shY, 7, -d * ab, 6.5, st.fur, st.line);
+  leg(d * legX, stepF);
+  rr(g, -bw / 2, top, bw, bot - top, Math.min(11, bw / 2)); g.fillStyle = st.fur; g.fill(); g.lineWidth = 1.7; g.strokeStyle = st.line; g.stroke();
+  if (st.purse) {                                      // her little yellow side purse
+    const px = -d * (bw / 2 - 1.5), py = bot - 5;
+    g.strokeStyle = st.strap; g.lineWidth = 1.8; g.beginPath(); g.moveTo(d * (bw / 2 - 5), top + 3.5); g.lineTo(px, py - 3); g.stroke();
+    drawPurse(g, px, py, st);
+  }
+  if (st.bow) drawBow(g, d * 0.5, top + 8, st);
+  const hand = drawBearLimb(g, d * (bw / 2 - 2), shY, 7, -d * af, 6.5, st.fur, st.line);
   if (st.fire) {                                       // pizza power: a little flame on her paw
     const fl = Math.sin(G.time * 25) * 0.8;
     g.fillStyle = '#ff6a00'; g.beginPath(); g.ellipse(hand.x, hand.y - 3, 3 + fl * 0.3, 4.5 + fl, 0, 0, TAU); g.fill();
     g.fillStyle = '#ffd23f'; g.beginPath(); g.ellipse(hand.x, hand.y - 2.4, 1.6, 2.6, 0, 0, TAU); g.fill();
   }
-  if (st.bow) drawBow(g, d * 0.5, cy - bh + 8, st);
   if (o.rose) drawRose(g, backHand.x, backHand.y);
   const lean = o.lean || 0;
-  drawHead(g, o.face, d * 5 * lean, cy - bh + 6 + lean * 1.5, o.headW || 32, tilt + d * 0.3 * lean, null, d, sc, st);
+  drawHead(g, o.face, d * 5 * lean, top + 6 + lean * 1.5, o.headW || 32, tilt + d * 0.3 * lean, null, d, sc, st);
   g.restore();
 }
 function drawWings(g, w, h) {

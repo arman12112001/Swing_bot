@@ -1,6 +1,6 @@
 # Super Love Run
 
-A small side-scrolling platformer made for phones. Your girlfriend is the hero (a cute white panda-bear with her face), your friends are the enemies, and you (a brown bear with your face) are waiting at the castle at the end.
+A small side-scrolling platformer made for phones. Your girlfriend is the hero (a cute white panda-bear body with little legs, a bow and a yellow side purse, with her face), your friends are the enemies, and you (a brown bear body with your face) are waiting at the castle at the end.
 
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
@@ -68,18 +68,17 @@ Power-ups come out of `?` blocks when you hit them from below.
 
 ## Voices
 
-The game makes little cartoon voices by itself (no files needed). To use your own instead, for example your real laughs recorded on your phone, put short clips in `docs/sounds/` with these names (`.mp3` or `.m4a`):
+The voices are short clips in `docs/sounds/`, cut from your Bubu sounds mp3:
 
-| File | When it plays |
-|---|---|
-| `cry.mp3` | she loses a life |
-| `laugh.mp3` | she meets you at the castle |
-| `giggle.mp3` | she eats pizza or red velvet cake (uses `laugh` if missing) |
-| `atata.mp3` | she hits a `?` box ("a-ta-taa!") |
-| `angry.mp3` | she eats broccoli |
+| File | When it plays | Taken from (seconds in the mp3) |
+|---|---|---|
+| `cry.mp3` | she loses a life | 3.95–5.55 (crying) |
+| `laugh.mp3` | she meets you at the castle | 17.35–19.70 (laughing) |
+| `giggle.mp3` | she eats pizza or red velvet cake | 17.35–18.50 (shorter laugh) |
+| `atata.mp3` | she hits a `?` box | 6.75–7.95 ("a-ta-ta-taa") |
+| `angry.mp3` | she eats broccoli | 10.20–11.15 ("hmph hmph") |
 
-Any clip you don't add keeps the built-in voice. Clips need the game to be online (GitHub Pages or Netlify), not opened as a file. Only use recordings you made or have permission to use, because the site is public.
-
+To change a voice, replace that file with another short `.mp3` or `.m4a` clip with the same name. A missing clip just stays silent. Clips need the game to be online (GitHub Pages or Netlify), not opened as a file. After replacing clips, bump `CACHE` in `sw.js` so installed copies pick them up.
 ## Swap the faces
 
 1. Put pictures in `docs/faces/` with these exact names:
@@ -185,7 +184,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v4'` in `sw.js` to a new name such as `'love-run-v5'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v5'` in `sw.js` to a new name such as `'love-run-v6'`.
 
 ## Troubleshooting
 
