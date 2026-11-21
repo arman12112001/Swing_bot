@@ -1,8 +1,8 @@
 /* Service worker: makes the game work offline and installable.
    Bump CACHE when you want every phone to drop its old copy immediately. */
-const CACHE = 'love-run-v2';
+const CACHE = 'love-run-v3';
 const CORE = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
-const FACE_NAMES = ['hero', 'me'];
+const FACE_NAMES = ['hero', 'me', 'dragon'];
 for (let i = 1; i <= 10; i++) FACE_NAMES.push('enemy' + i);
 const FACE_URLS = [];
 for (const n of FACE_NAMES) for (const ext of ['png', 'jpg']) FACE_URLS.push('./faces/' + n + '.' + ext);
