@@ -5,7 +5,7 @@ A small side-scrolling platformer made for phones. Your girlfriend is the hero (
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
 - Power-ups: 🎂 **red velvet cake**, 🥦 **broccoli** and 💖 **spiky heart shield** (15 seconds each), and 🍕 **pizza slice** (30 seconds). Each one appears **once per level**, except pizza, which appears **twice in level 3** (the second one is right before the dragon).
-- **5 hearts at the start of every level**. After losing a heart she restarts from the last checkpoint, and every coin and power-up block comes back.
+- **3 hearts at the start of every level**. After losing a heart she restarts from the last checkpoint, and every coin and power-up block comes back.
 - At each checkpoint your face pops up at the top: *"Let's go girl.. i am waiting for u ❤️"*
 - Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, friends **peeping out of green pipes**, a friend **on a cloud** dropping spiky balls, **cannons** firing rockets and **fish** leaping through bridges
 - Fire: spinning **fire bars** (lots in level 3) and **lava bubbles** jumping out of the lava
@@ -52,10 +52,10 @@ Power-ups come out of `?` blocks when you hit them from below.
 | 🎂 Red velvet cake | She grows big and chubby for **15 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
 | 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **30 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
 | 🥦 Broccoli | Oops! She shrinks to **tiny** for **15 seconds** (`BROCCOLI_SECONDS`), then grows back. |
-| 💖 Heart shield | She holds a **red heart with silver spikes** in front of her for **15 seconds** (`SHIELD_SECONDS`). Any enemy that runs into the heart (or into her) dies, and nothing can hurt her (enemies, fire bars, lava bubbles, spikes). Falling into a pit or into lava still costs a heart. The heart blinks just before it disappears, and a bar at the top shows how long is left. It's never placed near the dragon. |
+| 💖 Heart shield | She holds a **red heart with silver spikes** in front of her for **15 seconds** (`SHIELD_SECONDS`). Any enemy that runs into the heart (or into her) dies, and nothing can hurt her (enemies, fire bars, lava bubbles, spikes). Falling into a pit or into lava still costs a heart. The heart blinks just before it disappears, and a bar at the top shows how long is left. While she has it, **extra friends drop in** ahead of her to be smashed (up to 6 at a time); any left when the shield runs out vanish in a puff. It's never placed near the dragon. |
 | ❤️ Heart | +1 heart. 100 coins also give +1 heart. |
 
-Every level starts with **5 hearts**. Losing one sends her back to the last checkpoint (or the start), and all the coins, `?` blocks and power-up blocks in the level come back, so she can power up again.
+Every level starts with **3 hearts** (`START_LIVES`). Losing one sends her back to the last checkpoint (or the start), and all the coins, `?` blocks and power-up blocks in the level come back, so she can power up again.
 
 | Enemy | How to beat it |
 |---|---|
@@ -68,7 +68,7 @@ Every level starts with **5 hearts**. Losing one sends her back to the last chec
 | 🚀 Cannon | Fires rockets at her. Jump over them or stomp them. |
 | 🐟 Fish | Leap up through the gap in bridges. Stomp them or dodge. |
 | 🔥 Fire bar / lava bubble | Can't be beaten, only dodged: time your jump. |
-| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs do 0.5, and there's a pizza block right before the fight. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
+| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. Every third time she breathes **three flames at once** in a fan. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs do 0.5, and there's a pizza block right before the fight. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
 
 ## Saved progress and game over
 
@@ -110,10 +110,10 @@ Everything is at the top of the `<script>` in `index.html`:
 ```js
 const GAME_TITLE          = "Super Love Run";
 const GAME_TAGLINE        = "Run, jump and reach the castle!";
-const WIN_MESSAGE         = "You made it! ❤️";
+const WIN_MESSAGE         = "Congo Chan!\nYou made it! ❤️";   // \n starts a new line
 const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
-const START_LIVES         = 5;     // hearts at the start of every level
+const START_LIVES         = 3;     // hearts at the start of every level
 const CAKE_SECONDS        = 15;
 const PIZZA_SECONDS       = 30;
 const BROCCOLI_SECONDS    = 15;
@@ -201,9 +201,9 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N**, so you can see which version a phone is running. With every change, bump both `CACHE = 'love-run-v14'` in `sw.js` and `GAME_VERSION = 14` in `index.html` to the next number. GitHub Pages can take a minute or two to publish a change.
+**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N** in small text in the top-right corner, so you can see which version a phone is running. With every change, raise both `GAME_VERSION = 1` in `index.html` and `CACHE = 'love-run-game-v1'` in `sw.js` to the next number (2, 3, …). GitHub Pages can take a minute or two to publish a change.
 
-Phones that still have a version older than 14 show the old game one more time: open it, wait a few seconds, close it completely (swipe it away from recent apps) and open it again.
+Phones that had a version from before the automatic updates show the old game one more time: open it, wait a few seconds, close it completely (swipe it away from recent apps) and open it again.
 
 ## Troubleshooting
 

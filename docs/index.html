@@ -46,7 +46,8 @@
     font-size: clamp(28px, 12vh, 86px);
     text-shadow: 0 3px 0 #e2346a, 0 6px 0 #7a1747, 0 12px 22px rgba(0, 0, 0, .5);
   }
-  #s-title.win { font-size: clamp(30px, 14vh, 96px); animation: pop .6s cubic-bezier(.2, 1.6, .4, 1) both; }
+  #s-title { white-space: pre-line; }
+  #s-title.win { font-size: clamp(26px, 10.5vh, 76px); animation: pop .6s cubic-bezier(.2, 1.6, .4, 1) both; }
   .sub { margin: 0; font-weight: 800; font-size: clamp(14px, 4.6vh, 24px); text-shadow: 0 2px 6px rgba(0, 0, 0, .6); }
   .stats { font-weight: 800; font-size: clamp(12px, 3.8vh, 18px); opacity: .95; text-shadow: 0 2px 4px rgba(0, 0, 0, .6); }
   .hint { margin: 0; font-size: clamp(11px, 3.2vh, 14px); opacity: .85; text-shadow: 0 1px 3px rgba(0, 0, 0, .7); }
@@ -87,6 +88,7 @@
     display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: manipulation;
   }
   .icon-btn svg { width: 58%; height: 58%; }
+  #version { align-self: center; font-size: 12px; font-weight: 700; opacity: .8; text-shadow: 0 1px 3px rgba(0, 0, 0, .7); pointer-events: none; }
   #btnMute.muted .waves { display: none; }
   #btnMute:not(.muted) .mutex { display: none; }
 
@@ -121,6 +123,7 @@
 <div id="safe"></div>
 
 <div id="topbtns">
+  <span id="version" hidden></span>
   <button id="btnPause" class="icon-btn" aria-label="Pause" hidden>
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
   </button>
@@ -155,10 +158,10 @@
    ============================================================================ */
 const GAME_TITLE          = "Super Love Run";
 const GAME_TAGLINE        = "Run, jump and reach the castle!";
-const WIN_MESSAGE         = "You made it! ❤️";
+const WIN_MESSAGE         = "Congo Chan!\nYou made it! ❤️";   // \n starts a new line
 const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
-const START_LIVES         = 5;     // hearts at the start of every level
+const START_LIVES         = 3;     // hearts at the start of every level
 const CAKE_SECONDS        = 15;    // red velvet cake: she's big and enemies that touch her die
 const PIZZA_SECONDS       = 30;    // pizza: she can throw fireballs for this long (a hit also ends it)
 const BROCCOLI_SECONDS    = 15;    // broccoli: she shrinks to tiny for this long
@@ -191,8 +194,9 @@ const FACE_TWEAKS = {};
 // or 1.5 if an old phone feels slow. The game also lowers it by itself if frames drop.
 const MAX_DPR = 2;
 
-// Shown on the title screen so you can tell which version a phone is running. Keep it equal to CACHE in sw.js.
-const GAME_VERSION = 14;
+// Shown small in the top-right corner of the title screen. Raise it by 1 with every update,
+// together with CACHE in sw.js ('love-run-game-v' + the same number).
+const GAME_VERSION = 1;
 
 /* ============================================================================
    2) LEVELS
@@ -1107,7 +1111,7 @@ function resetActors() {
   G.enemies = S.enemies.map((s, idx) => makeEnemy(s, idx));
   G.platforms = S.platforms.map(makePlatform);
   G.player = makePlayer(G.respawn.x, G.respawn.y);
-  G.fireballs = []; G.flames = [];
+  G.fireballs = []; G.flames = []; G.wave = null;
   if (S.boss && !(G.boss && G.boss.dead)) G.boss = makeBoss(S.boss);   // the dragon heals if you lose a life
   G.cannons = S.cannons.map((c, i) => ({ x: c.tx * TILE + TILE / 2, y: c.ty * TILE + 9, t: 1.5 + i * 0.7 }));
   G.fishers = S.fishers.map((f, i) => ({ x: f.x, t: 1 + i * 0.5 }));
@@ -1419,7 +1423,42 @@ function eatPizza(p) {
 }
 function eatShield(p) {
   p.shieldT = SHIELD_SECONDS; addScore(1000); Sfx.power(); Sfx.voice('giggle');
-  popText('HEART SHIELD!', p.x + p.w / 2, p.y - 18, '#ffd1dc', 18); burstHearts(p.x + p.w / 2, p.y, 10, 30);
+  popText('HEART SHIELD! SMASH THEM!', p.x + p.w / 2, p.y - 18, '#ffd1dc', 18); burstHearts(p.x + p.w / 2, p.y, 10, 30);
+  G.wave = { t: 0, next: 0.6, n: 0 };
+}
+/* While she has the heart shield, extra friends drop in ahead of her to be smashed.
+   Any that are left when the shield runs out vanish in a puff. */
+const WAVE_TYPES = ['E', 'F', 'E', 'J', 'T', 'F', 'E', 'J'];
+const WAVE_MAX_ALIVE = 6;
+function updateShieldWave(dt) {
+  const w = G.wave, p = G.player;
+  if (!w) return;
+  if (p.shieldT <= 0) { endShieldWave(); return; }
+  w.t += dt;
+  if (w.t < w.next || p.shieldT < 2.5) return;           // no new ones just before the shield runs out
+  w.next = w.t + 0.9;
+  let n = G.enemies.filter((e) => e.wave && alive(e)).length;
+  for (let i = 0; i < (w.n % 3 === 2 ? 1 : 2) && n < WAVE_MAX_ALIVE; i++) if (dropWaveEnemy(WAVE_TYPES[w.n % WAVE_TYPES.length])) { w.n++; n++; }
+}
+function dropWaveEnemy(type) {
+  const p = G.player, endX = G.goal ? G.goal.x - 8 * TILE : G.W * TILE;
+  const lo = Math.max(p.x + 5 * TILE, G.camX + viewW * 0.45), hi = Math.min(G.camX + viewW - TILE, endX);
+  if (hi <= lo) return false;
+  for (let tries = 0; tries < 12; tries++) {
+    const tx = Math.floor((lo + Math.random() * (hi - lo)) / TILE);
+    let land = -1;
+    for (let ty = 0; ty < ROWS; ty++) { const ch = tileAt(tx, ty); if (ch !== '.' && ch !== 'o') { land = ty; break; } }
+    if (land < 3 || !(isSolid(tx, land) || isOneWay(tx, land))) continue;   // never over a pit, lava or spikes
+    const props = { wave: true, dir: -1, vy: 80, active: true };
+    if (type === 'T') Object.assign(props, { w: TW, h: TH, state: 'walk', shellT: 0, kickGrace: 0, combo: 0 });
+    spawnEnemy(type, tx * TILE + (TILE - (props.w || EW)) / 2, -70, props);
+    return true;
+  }
+  return false;
+}
+function endShieldWave() {
+  G.wave = null;
+  for (const e of G.enemies) if (e.wave && alive(e)) { e.removed = true; puff(e.x + e.w / 2, e.y + e.h / 2, 8); burstHearts(e.x + e.w / 2, e.y + e.h / 2, 3, 14); }
 }
 function eatBroccoli(p) {
   p.tinyT = BROCCOLI_SECONDS; p.megaT = 0;
@@ -1710,13 +1749,13 @@ function defeatBoss() {
   }
   G.banner = { title: 'DRAGON DEFEATED!', sub: 'The castle is open ❤', t: 0, dur: 2.8 };
 }
-function breathe(b, spread) {
+function breathe(b, n) {
   // she aims straight at you, wherever you stand (on the ground, on bricks, or mid-jump)
   const H = 54 * (faces.dragon ? faces.dragon.aspect : 1), p = G.player;
   const mx = b.x + b.w / 2 + b.face * 52, my = b.y + b.h - 66 - H * 0.28;
   const tx = p.x + p.w / 2 + p.vx * 0.25, ty = p.y + p.h * 0.5;
   const base = Math.atan2(ty - my, tx - mx);
-  for (const off of spread ? [-0.14, 0.14] : [0]) {
+  for (const off of n === 3 ? [-0.24, 0, 0.24] : n === 2 ? [-0.14, 0.14] : [0]) {
     const a = base + off;
     G.flames.push({ x: mx - 11, y: my - 7, w: 22, h: 14, vx: Math.cos(a) * 195, vy: Math.sin(a) * 195, life: 6 });
   }
@@ -1751,8 +1790,12 @@ function updateBoss(dt) {
   b.vy = Math.min(b.vy + 2000 * dt, 900);
   b.onGround = moveY(b, b.vy * dt) === 'floor';
   b.fireT -= dt;
-  if (b.fireT <= 0) { breathe(b, angry); b.fireT = (angry ? 2.0 : 2.6) + Math.random() * 0.8; }
-  if (b.burstT > 0) { b.burstT -= dt; if (b.burstT <= 0) breathe(b, false); }
+  if (b.fireT <= 0) {                                   // two single flames, then three at once
+    b.shots = (b.shots || 0) + 1;
+    const three = b.shots % 3 === 0;
+    breathe(b, three ? 3 : 1);
+    b.fireT = (three ? 0.6 : 0) + (angry ? 2.0 : 2.6) + Math.random() * 0.8;
+  }
   if (Math.random() < dt * 1.5) addP({ type: 'puff', x: b.x + b.w / 2 + b.face * 40, y: b.y - 30, vx: b.face * 20, vy: -40, life: 0.6, max: 0.6, s: 3 });
 }
 function playerVsBoss() {
@@ -2041,6 +2084,7 @@ function checkProgress() {
 function startFlag() {
   const p = G.player, goal = G.goal;
   G.state = 'flag';
+  endShieldWave();
   const onBase = p.y + p.h <= goal.baseY + 2;
   const frac = clamp((goal.baseY - (p.y + p.h)) / (goal.baseY - goal.topY), 0, 1);
   const bonus = onBase ? (frac >= 0.97 ? 5000 : 100 + Math.round(frac * 39) * 100) : 100;
@@ -2198,6 +2242,7 @@ function update(dt) {
       if (G.state !== 'play') break;
       updateEnemies(dt);
       updateSpawners(dt);
+      updateShieldWave(dt);
       updateHazards(dt);
       if (G.state !== 'play') break;
       updateBoss(dt);
@@ -2806,12 +2851,13 @@ function drawHUD() {
   ctx.drawImage(atlas, (TI.coin0 + Math.floor(G.time * 6) % 4) * tilePx, 0, tilePx, tilePx, x, y - fs * 0.75, fs * 1.5, fs * 1.5);
   outlined('×' + pad(G.coins, 2), x + fs * 1.5, y, 'left', fs);
   x = left + step * 2.15;
-  for (let i = 0; i < 5; i++) {                       // lives as hearts
+  const slots = Math.max(START_LIVES, Math.min(G.lives, 5));
+  for (let i = 0; i < slots; i++) {                   // lives as hearts
     const hx = x + fs * 0.55 + i * fs * 1.12;
     ctx.fillStyle = 'rgba(20,8,40,0.7)'; heartPath(ctx, hx, y + fs * 0.05, fs * 0.62); ctx.fill();
     ctx.fillStyle = i < G.lives ? '#ff3d6e' : 'rgba(255,255,255,0.25)'; heartPath(ctx, hx, y, fs * 0.5); ctx.fill();
   }
-  x += fs * 5.7;
+  x += fs * (1.12 * slots + 0.1);
   if (G.lives > 5) x += outlined('+' + (G.lives - 5), x, y, 'left', fs) + fs * 0.3;
   const p = G.player;
   const y2 = y + fs * 1.6;
@@ -2870,7 +2916,7 @@ function drawBanner() {
   ctx.globalAlpha = a;
   const cy = canvas.height * 0.36, fs = clamp(cssH * 0.1, 22, 60) * dpr;
   if (b.lives) {
-    const n = Math.max(5, G.lives), gap = fs * 1.15, x0 = canvas.width / 2 - (n - 1) * gap / 2;
+    const n = Math.max(START_LIVES, G.lives), gap = fs * 1.15, x0 = canvas.width / 2 - (n - 1) * gap / 2;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = 'rgba(20,8,40,0.7)'; heartPath(ctx, x0 + i * gap, cy + fs * 0.06, fs * 0.55); ctx.fill();
       ctx.fillStyle = i < G.lives ? '#ff3d6e' : 'rgba(255,255,255,0.3)'; heartPath(ctx, x0 + i * gap, cy, fs * 0.45); ctx.fill();
@@ -2897,7 +2943,8 @@ function render() {
    15) SCREENS (DOM overlays)
    ============================================================================ */
 const screenEl = $('screen'), sTitle = $('s-title'), sSub = $('s-sub'), sFaces = $('s-faces'), sStats = $('s-stats'),
-  btn1 = $('s-btn1'), btn2 = $('s-btn2'), sHint = $('s-hint'), btnPause = $('btnPause'), btnMute = $('btnMute');
+  btn1 = $('s-btn1'), btn2 = $('s-btn2'), sHint = $('s-hint'), btnPause = $('btnPause'), btnMute = $('btnMute'), verEl = $('version');
+verEl.textContent = 'Version ' + GAME_VERSION;
 let onBtn1 = null, onBtn2 = null, onTap = null;
 function faceNode(key) {
   if (key === 'heart') { const s = document.createElement('div'); s.className = 'heartbeat'; s.textContent = '❤️'; return s; }
@@ -2945,7 +2992,7 @@ function showTitle() {
   loadLevel(0);
   G.camX = 0; G.panDir = 1;
   const u = progress.level;
-  const stats = (best ? 'Best score: ' + best + ' · ' : '') + 'Version ' + GAME_VERSION;
+  const stats = best ? 'Best score: ' + best : '';
   if (u > 0) {
     showScreen({ title: GAME_TITLE, faces: ['hero'], sub: GAME_TAGLINE, btn1: 'Continue · Level ' + (u + 1) + ' ▶', pulse: true,
       onBtn1: continueGame, onTap: continueGame, btn2: 'New Game', onBtn2: startGame, stats, hint: controlsHint() });
@@ -3014,6 +3061,7 @@ function resume() { G.paused = false; hideScreen(); last = performance.now(); }
 function togglePause() { if (G.paused) resume(); else pause(); }
 function toggleMute() { Sfx.init(); Sfx.setMuted(!Sfx.muted); syncTopButtons(); }
 function syncTopButtons() {
+  verEl.hidden = !(G.state === 'title' && screenEl.classList.contains('show'));
   btnMute.classList.toggle('muted', Sfx.muted);
   btnMute.setAttribute('aria-label', Sfx.muted ? 'Unmute sound' : 'Mute sound');
   btnPause.hidden = !(canPause() && !G.paused);
