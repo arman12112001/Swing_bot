@@ -4,12 +4,12 @@ A small side-scrolling platformer made for phones. Your girlfriend is the hero (
 
 - One file: `index.html` (HTML5 Canvas + plain JavaScript, no frameworks, no build step)
 - Three long levels: **Sunny Hills** (day), **Starry Night** (harder, night) and **Dragon Mountain** (hardest, lava, with a **dragon boss**)
-- Power-ups: 🎂 **red velvet cake**, 🍕 **pizza slice**, 🥦 **broccoli** and 🌈 **heart shield**, each lasting 30 seconds
+- Power-ups: 🎂 **red velvet cake**, 🥦 **broccoli** and 💖 **spiky heart shield** (15 seconds each), and 🍕 **pizza slice** (30 seconds). Each one appears **once per level**, except pizza, which appears **twice in level 3** (the second one is right before the dragon).
 - **5 hearts at the start of every level**. After losing a heart she restarts from the last checkpoint, and every coin and power-up block comes back.
 - At each checkpoint your face pops up at the top: *"Let's go girl.. i am waiting for u ❤️"*
 - Enemies: walkers, fast walkers, hoppers, **flyers**, **tortoises** with kickable shells, friends **peeping out of green pipes**, a friend **on a cloud** dropping spiky balls, **cannons** firing rockets and **fish** leaping through bridges
 - Fire: spinning **fire bars** (lots in level 3) and **lava bubbles** jumping out of the lava
-- Every level has every power-up, every enemy type, moving platforms, spikes and checkpoints
+- Every level has every enemy type, moving platforms, spikes and checkpoints
 - At the end of each level she meets you at the castle and you **kiss** 💋
 - **Big ending** after level 3: you walk off together hand in hand into a sunset while fireworks spell her name in the sky
 - Cute **voices**: she cries when she loses a life, laughs when she meets you, says "a-ta-taa!" at `?` boxes, grumbles at broccoli and giggles at pizza and cake
@@ -49,10 +49,10 @@ Power-ups come out of `?` blocks when you hit them from below.
 
 | | What it does |
 |---|---|
-| 🎂 Red velvet cake | She grows big and chubby for **30 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
+| 🎂 Red velvet cake | She grows big and chubby for **15 seconds** (`CAKE_SECONDS`). Any enemy that touches her dies. She flickers just before shrinking back. |
 | 🍕 Pizza slice | Orange cap. She can **throw bouncing fireballs** that knock out any enemy, for **30 seconds** (`PIZZA_SECONDS`). A hit during that time only takes the pizza away, not a life. |
-| 🥦 Broccoli | Oops! She shrinks to **tiny** for **30 seconds** (`BROCCOLI_SECONDS`), then grows back. |
-| 🌈 Heart shield | **Rainbow invincibility** for **30 seconds** (`SHIELD_SECONDS`): nothing can hurt her (enemies, fire bars, lava bubbles, flames, spikes), enemies she touches die, and touching the dragon hurts the dragon. Falling into a pit or into lava still costs a heart. A rainbow bar at the top shows how long is left. |
+| 🥦 Broccoli | Oops! She shrinks to **tiny** for **15 seconds** (`BROCCOLI_SECONDS`), then grows back. |
+| 💖 Heart shield | She holds a **red heart with silver spikes** in front of her for **15 seconds** (`SHIELD_SECONDS`). Any enemy that runs into the heart (or into her) dies, and nothing can hurt her (enemies, fire bars, lava bubbles, spikes). Falling into a pit or into lava still costs a heart. The heart blinks just before it disappears, and a bar at the top shows how long is left. It's never placed near the dragon. |
 | ❤️ Heart | +1 heart. 100 coins also give +1 heart. |
 
 Every level starts with **5 hearts**. Losing one sends her back to the last checkpoint (or the start), and all the coins, `?` blocks and power-up blocks in the level come back, so she can power up again.
@@ -68,7 +68,7 @@ Every level starts with **5 hearts**. Losing one sends her back to the last chec
 | 🚀 Cannon | Fires rockets at her. Jump over them or stomp them. |
 | 🐟 Fish | Leap up through the gap in bridges. Stomp them or dodge. |
 | 🔥 Fire bar / lava bubble | Can't be beaten, only dodged: time your jump. |
-| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs only do 0.5. Touching her with the heart shield or cake power also does 2. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
+| 🐉 Dragon (end of level 3) | **Aims her fire at you**, even if you stand on the bricks, but the flames are slow enough to jump over. **Stomp her head** (2 damage), so 3 stomps win. Pizza fireballs do 0.5, and there's a pizza block right before the fight. She has 6 health (`DRAGON_HP`) and gets a bit faster when she's hurt. Beat her and the gate to the castle opens. |
 
 ## Saved progress and game over
 
@@ -114,12 +114,12 @@ const WIN_MESSAGE         = "You made it! ❤️";
 const WIN_SUBTEXT         = "Thanks for running all the way to me 💕";
 const LEVEL_CLEAR_MESSAGE = "Level clear! ❤️";
 const START_LIVES         = 5;     // hearts at the start of every level
-const CAKE_SECONDS        = 30;
+const CAKE_SECONDS        = 15;
 const PIZZA_SECONDS       = 30;
-const BROCCOLI_SECONDS    = 30;
-const SHIELD_SECONDS      = 30;
+const BROCCOLI_SECONDS    = 15;
+const SHIELD_SECONDS      = 15;
 const DRAGON_HP           = 6;
-const HER_NAME            = "MY LOVE";   // spelled in fireworks at the very end
+const HER_NAME            = "CHAN";      // spelled in fireworks at the very end
 const CHECKPOINT_MESSAGE  = "Let's go girl.. i am waiting for u ❤️";
 ```
 
@@ -201,7 +201,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v12'` in `sw.js` to a new name such as `'love-run-v13'`.
+**Updating:** after you upload new pictures or changes, the installed game shows them the next time it's opened (sometimes the time after that). To force every phone to refresh right away, change `CACHE = 'love-run-v13'` in `sw.js` to a new name such as `'love-run-v14'`.
 
 ## Troubleshooting
 
