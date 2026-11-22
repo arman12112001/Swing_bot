@@ -1,11 +1,15 @@
 // Love Bear: a little brown bear (with your face) that walks along the taskbar and keeps her company.
 // The window is small and see-through; it moves around with the bear. Only the bear itself catches the mouse,
 // so clicks everywhere else go straight through to whatever she is working on.
+// To know when the mouse is over him, the app checks the cursor position itself many times a second
+// (it doesn't rely on Windows mouse hooks, which Windows can silently drop after sleep or hide/show).
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage, powerMonitor, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const SMOKE = process.argv.includes('--smoke-test');   // used by the build to check the app starts
+const TEST_LOG = process.env.LOVE_BEAR_TEST_LOG || '';  // used by the build's click test (records what the bear does)
+const OLD_HOOK = process.env.LOVE_BEAR_HOVER === 'hook'; // test only: the old way (Windows mouse hook) to compare against
 const WIN_W = 300, WIN_H = 330;                        // the window around the bear (room for the speech bubble)
 const HOTKEY = 'Control+Alt+B', HOTKEY_LABEL = 'Ctrl+Alt+B';   // hides him / brings him back
 
@@ -42,7 +46,7 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false, contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.setAlwaysOnTop(true, 'screen-saver');
-  win.setIgnoreMouseEvents(true, { forward: true });
+  win.setIgnoreMouseEvents(true, OLD_HOOK ? { forward: true } : undefined);
   win.setMenu(null);
   win.loadFile(path.join(__dirname, 'pet.html'));
   win.once('ready-to-show', () => win.showInactive());
@@ -63,8 +67,27 @@ function hideBear() {
 function showBear() {
   clearTimeout(hideTimer);
   const wasHidden = hidden; hidden = false;
-  if (win) { win.showInactive(); if (wasHidden) send('command', 'back'); }
+  if (win) { win.showInactive(); resetMouse(); if (wasHidden) send('command', 'back'); }
   buildTrayMenu();
+}
+// Start the mouse handling fresh: clicks go through, until the cursor is over the bear again.
+function resetMouse() {
+  if (!win || win.isDestroyed()) return;
+  win.setAlwaysOnTop(true, 'screen-saver');
+  if (OLD_HOOK) return;
+  win.setIgnoreMouseEvents(true);
+  cursorWasNear = false;
+  send('mouse-reset');
+}
+// Where is the mouse? Sent to the bear's page while it's over (or just left) his window.
+let cursorWasNear = false;
+function pollCursor() {
+  if (OLD_HOOK || !win || win.isDestroyed() || hidden || !win.isVisible()) return;
+  const p = screen.getCursorScreenPoint(), b = win.getBounds();
+  const x = p.x - b.x, y = p.y - b.y, near = x >= -2 && y >= -2 && x <= b.width + 2 && y <= b.height + 2;
+  if (TEST_LOG && Date.now() - (pollCursor.lastLog || 0) > 1000) { pollCursor.lastLog = Date.now(); try { fs.appendFileSync(TEST_LOG, JSON.stringify({ type: 'poll', cursor: p, win: b, near }) + '\n'); } catch (e) { /* ignore */ } }
+  if (near || cursorWasNear) send('cursor', { x, y, inside: near });
+  cursorWasNear = near;
 }
 function toggleBear() { if (hidden) showBear(); else hideBear(); }
 
@@ -96,14 +119,18 @@ function createTray() {
 
 // ---- messages from the bear's page ----
 ipcMain.handle('screen', () => screenInfo());
-ipcMain.handle('settings', () => Object.assign({}, settings, { hotkey: hotkeyOk ? HOTKEY_LABEL : '' }));
+ipcMain.handle('settings', () => Object.assign({}, settings, { hotkey: hotkeyOk ? HOTKEY_LABEL : '', test: !!TEST_LOG }));
 ipcMain.on('move', (e, p) => {
   if (!win || win.isDestroyed() || !p) return;
   const x = Math.round(p.x), y = Math.round(p.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   win.setBounds({ x, y, width: WIN_W, height: WIN_H });
 });
-ipcMain.on('click-through', (e, on) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!on, { forward: true }); });
+ipcMain.on('click-through', (e, on) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!on, OLD_HOOK ? { forward: true } : undefined); });
+ipcMain.on('event', (e, d) => {               // only used by the build's click test
+  if (!TEST_LOG) return;
+  try { fs.appendFileSync(TEST_LOG, JSON.stringify(Object.assign({ t: Date.now(), hidden }, d)) + '\n'); } catch (err) { /* ignore */ }
+});
 ipcMain.on('ready', () => {
   if (!SMOKE) return;
   console.log('SMOKE OK');
@@ -130,10 +157,11 @@ app.whenReady().then(() => {
   createTray();
   // is she at the laptop? (seconds since the last key press or mouse move) -> the bear naps while she's away
   setInterval(() => send('idle', powerMonitor.getSystemIdleTime()), 5000);
+  setInterval(pollCursor, 40);
   powerMonitor.on('lock-screen', () => send('idle', 9999));
-  powerMonitor.on('unlock-screen', () => send('idle', 0));
-  powerMonitor.on('resume', () => send('idle', 0));
-  const refresh = () => send('screen', screenInfo());
+  powerMonitor.on('unlock-screen', () => { send('idle', 0); resetMouse(); });
+  powerMonitor.on('resume', () => { send('idle', 0); resetMouse(); });
+  const refresh = () => { send('screen', screenInfo()); resetMouse(); };
   screen.on('display-metrics-changed', refresh);
   screen.on('display-added', refresh);
   screen.on('display-removed', refresh);

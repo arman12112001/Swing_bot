@@ -349,7 +349,10 @@ function setState(state, seconds) {
   B.state = state; B.t = 0; B.until = seconds || 0;
   if (state === 'walk' && !B.target) B.dir = B.x < minX() + 80 ? 1 : B.x > maxX() - 80 ? -1 : (Math.random() < 0.5 ? -1 : 1);
 }
+// Only during the build's click test: report what happens, and stand still so the test can click him.
+function testEvent(d) { if (settings.test && api.event) api.event(d); }
 function nextState() {
+  if (settings.test) { setState('idle', 5); return; }
   const h = new Date().getHours(), night = h >= 23 || h < 6;
   const r = Math.random();
   if (r < (night ? 0.25 : 0.45)) setState('walk', rand(4, 10));
@@ -385,6 +388,7 @@ const FALL_TIME = 0.32, LIE_TIME = 1.0, UP_TIME = 0.4, FALL_PIVOT = 28;
 function shuffleBag(list) { let b = []; return () => { if (!b.length) b = list.slice().sort(() => Math.random() - 0.5); return b.pop(); }; }
 const nextLove = shuffleBag(Object.keys(LOVE_LINES)), nextBeat = shuffleBag(Object.keys(BEAT_LINES));
 function startAction(type, kind, side) {
+  testEvent({ type: 'action', action: type + ':' + kind });
   if (B.sleeping) { B.sleeping = false; particles = particles.filter((q) => q.kind !== 'z'); }
   B.target = null; B.flee = null;
   action = { type, kind, t: 0, dur: ACTION_DUR[kind], side: side >= 0 ? 1 : -1, hit: false, n: 0 };
@@ -699,25 +703,33 @@ function overBear(px, py) {
   if (px > cx - 38 && px < cx + 38 && py > feetY - 140 && py < feetY + 2) return true;   // where he stands (still counts while he's down, so fast clicking keeps hitting him)
   return lying(action) && px > cx - 150 && px < cx + 150 && py > feetY - 62 && py < feetY + 2;   // flat on the floor
 }
-function setThrough(on) { if (on !== clickThrough) { clickThrough = on; api.setClickThrough(on); } }
+function setThrough(on) { if (on !== clickThrough) { clickThrough = on; api.setClickThrough(on); testEvent({ type: 'through', on }); } }
 let press = null;
-window.addEventListener('mousemove', (e) => {
+// Is the mouse over him? Called with mouse moves inside the window, and with the cursor position the app
+// checks itself many times a second (that keeps working even when the window lets clicks through).
+function handleHover(x, y, inside) {
+  if (press && now() - press.t > 4 && !B.dragging) press = null;   // a press that never finished: forget it
   if (press) return;
-  const x = e.clientX, y = e.clientY, onBear = overBear(x, y), onBtn = btnAt(x, y);
+  const onBear = inside !== false && overBear(x, y), onBtn = inside !== false ? btnAt(x, y) : null;
   if (onBear || onBtn) btnUntil = now() + 2.2;
   hover = onBear || !!onBtn;
   setThrough(!hover);
-  canvas.style.cursor = onBtn ? 'pointer' : onBear ? (mode === 'beat' ? 'crosshair' : 'pointer') : 'default';
-});
+  canvas.style.cursor = hover ? 'pointer' : 'default';
+}
+window.addEventListener('mousemove', (e) => handleHover(e.clientX, e.clientY, true));
 document.documentElement.addEventListener('mouseleave', () => { if (!press) { hover = false; setThrough(true); } });
+api.on('cursor', (c) => { if (c) handleHover(c.x, c.y, c.inside); });
+api.on('mouse-reset', () => { press = null; hover = false; clickThrough = true; if (B.dragging) { B.dragging = false; B.onFloor = false; setState('fall', 0); } });
+setInterval(() => { if (!press) api.setClickThrough(clickThrough); }, 3000);   // keep the app and the page in agreement
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
   const x = e.clientX, y = e.clientY, b = btnAt(x, y);
+  testEvent({ type: 'down', button: e.button, x, y, over: overBear(x, y) });
   if (b) { setMode(b.id); return; }                    // any button on ❤️ / 👊 picks the mode
   if (!overBear(x, y)) return;
   if (e.button !== 0) e.preventDefault();
   const side = x >= bearX() ? 1 : -1;
-  if (e.button !== 0) { press = { other: true, side }; return; }   // right / middle click: just the action
+  if (e.button !== 0) { press = { other: true, side, t: now() }; return; }   // right / middle click: just the action
   canvas.setPointerCapture(e.pointerId);
   press = { sx: e.screenX, sy: e.screenY, offX: e.screenX - B.x, offY: e.screenY - B.y, t: now(), moved: false, side };
 });
@@ -781,7 +793,8 @@ function showTipOnce() {
   await loadFace();
   nextMessageAt = now() + rand(MESSAGE_MINUTES[0], MESSAGE_MINUTES[1]) * 60;
   setState('wave', 3); say(greeting()); hearts(6, 22);
-  showTipOnce();
+  if (settings.test) setInterval(() => testEvent({ type: 'pos', x: Math.round(B.x), y: Math.round(B.y - 60), state: B.state, bubble: bubble && bubble.text }), 400);
+  else showTipOnce();
   syncWindow(); render();
   requestAnimationFrame(frame);
   api.ready();

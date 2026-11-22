@@ -39,6 +39,16 @@ jobs:
           Write-Host "bear: $r"
           $j = $r | ConvertFrom-Json
           if (-not $j.ok -or -not $j.visible -or -not $j.tray) { exit 1 }
+      - name: Click test on Windows (real mouse; hide and bring back, then click again)
+        shell: pwsh
+        run: ./test/click-test.ps1 -Label new
+      - name: Same click test with the old mouse-hook method (comparison only)
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          LOVE_BEAR_HOVER: hook
+        run: ./test/click-test.ps1 -Label oldhook
       - name: Check that installing over the old version closes and replaces it
         shell: pwsh
         env:

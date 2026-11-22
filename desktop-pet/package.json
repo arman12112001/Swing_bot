@@ -1,7 +1,7 @@
 {
   "name": "love-bear",
   "productName": "Love Bear",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A little brown bear that keeps her company on her laptop.",
   "main": "main.js",
   "private": true,
