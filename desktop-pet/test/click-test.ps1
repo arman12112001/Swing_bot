@@ -26,11 +26,13 @@ function Pos { Events 'pos' | Select-Object -Last 1 }
 function Move-To([int]$x, [int]$y) {   # real mouse movement (goes through the same path as a hand on the mouse)
   [Input]::mouse_event(0x8001, [int]($x * 65535 / ($sw - 1)), [int]($y * 65535 / ($sh - 1)), 0, [UIntPtr]::Zero)
 }
-function Click-Bear([bool]$right) {
+function Click-Bear([bool]$right, [bool]$jiggle = $false) {
   $p = Pos
   Move-To 60 60; Start-Sleep -Milliseconds 400
   foreach ($k in 1..6) { Move-To ([int](60 + ($p.x - 60) * $k / 6)) ([int](60 + ($p.y - 60) * $k / 6)); Start-Sleep -Milliseconds 60 }
   Start-Sleep -Milliseconds 500
+  if ($jiggle) { Move-To ([int]$p.x + 1) ([int]$p.y); Start-Sleep -Milliseconds 60; Move-To ([int]$p.x) ([int]$p.y); Start-Sleep -Milliseconds 150 }
+  "{0} click{1} at {2},{3}" -f $(if ($right) { 'right' } else { 'left' }), $(if ($jiggle) { ' (after a 1px wiggle)' } else { '' }), $p.x, $p.y | ForEach-Object { Add-Content $log ('{"type":"TEST","note":"' + $_ + '"}') }
   if ($right) { $d = 0x0008; $u = 0x0010 } else { $d = 0x0002; $u = 0x0004 }
   [Input]::mouse_event($d, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 80
   [Input]::mouse_event($u, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 1500
@@ -43,11 +45,13 @@ function Press-Hotkey {                                # Ctrl+Alt+B
 }
 $results = [ordered]@{}
 $n = Actions; Click-Bear $false; $results['left click'] = (Actions) -gt $n
+$n = Actions; Click-Bear $false $true; $results['left click after wiggle'] = (Actions) -gt $n
 $n = Actions; Click-Bear $true;  $results['right click'] = (Actions) -gt $n
 Start-Process $exePath; Start-Sleep 3                  # opening Love Bear again (desktop icon) hides him...
 $hid1 = (Pos).hidden
 Start-Process $exePath; Start-Sleep 3                  # ...and again brings him back
 $n = Actions; Click-Bear $false; $results['click after desktop-icon hide/show'] = (Actions) -gt $n
+$n = Actions; Click-Bear $false $true; $results['click after icon hide/show + wiggle'] = (Actions) -gt $n
 Press-Hotkey; Start-Sleep 3; $hid2 = (Pos).hidden
 Press-Hotkey; Start-Sleep 3
 $n = Actions; Click-Bear $false; $results['click after Ctrl+Alt+B hide/show'] = (Actions) -gt $n
@@ -57,5 +61,5 @@ Get-Process -Name 'Love Bear' -ErrorAction SilentlyContinue | Stop-Process -Forc
 Write-Host "=== click test ($Label) ==="
 $results.GetEnumerator() | ForEach-Object { Write-Host ("{0,-38} {1}" -f $_.Key, $(if ($_.Value) { 'OK' } else { 'FAILED' })) }
 Write-Host "--- events (without positions) ---"
-Get-Content $log | Where-Object { $_ -notmatch '"type":"pos"' } | Select-Object -Last 30
+Get-Content $log | Where-Object { $_ -notmatch '"type":"pos"' }
 if ($results.Values -contains $false) { exit 1 }

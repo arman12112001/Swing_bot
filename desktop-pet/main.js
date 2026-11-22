@@ -48,12 +48,21 @@ function createWindow() {
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setIgnoreMouseEvents(true, OLD_HOOK ? { forward: true } : undefined);
   win.setMenu(null);
+  if (TEST_LOG && process.platform === 'win32') {   // test only: which raw mouse messages reach the window
+    for (const [msg, name] of [[0x21, 'WM_MOUSEACTIVATE'], [0x201, 'WM_LBUTTONDOWN'], [0x204, 'WM_RBUTTONDOWN'], [0x210, 'WM_PARENTNOTIFY']]) win.hookWindowMessage(msg, () => testLog({ type: 'msg', name }));
+    let lastHit = 0;
+    win.hookWindowMessage(0x84, () => { const n = Date.now(); if (n - lastHit > 400) { lastHit = n; testLog({ type: 'msg', name: 'WM_NCHITTEST' }); } });
+  }
   win.loadFile(path.join(__dirname, 'pet.html'));
   win.once('ready-to-show', () => win.showInactive());
   win.on('closed', () => { win = null; });
 }
 
 function send(channel, data) { if (win && !win.isDestroyed()) win.webContents.send(channel, data); }
+function testLog(d) {                      // only during the build's click test
+  if (!TEST_LOG) return;
+  try { fs.appendFileSync(TEST_LOG, JSON.stringify(Object.assign({ t: Date.now(), hidden }, d)) + '\n'); } catch (e) { /* ignore */ }
+}
 
 // Hide / bring back: Ctrl+Alt+B, the Love Bear icon on the desktop, or the tray menu.
 function hideBear() {
@@ -76,6 +85,7 @@ function resetMouse() {
   win.setAlwaysOnTop(true, 'screen-saver');
   if (OLD_HOOK) return;
   win.setIgnoreMouseEvents(true);
+  testLog({ type: 'reset' });
   cursorWasNear = false;
   send('mouse-reset');
 }
@@ -85,7 +95,7 @@ function pollCursor() {
   if (OLD_HOOK || !win || win.isDestroyed() || hidden || !win.isVisible()) return;
   const p = screen.getCursorScreenPoint(), b = win.getBounds();
   const x = p.x - b.x, y = p.y - b.y, near = x >= -2 && y >= -2 && x <= b.width + 2 && y <= b.height + 2;
-  if (TEST_LOG && Date.now() - (pollCursor.lastLog || 0) > 1000) { pollCursor.lastLog = Date.now(); try { fs.appendFileSync(TEST_LOG, JSON.stringify({ type: 'poll', cursor: p, win: b, near }) + '\n'); } catch (e) { /* ignore */ } }
+  if (near !== cursorWasNear) testLog({ type: 'near', near, cursor: p, win: b });
   if (near || cursorWasNear) send('cursor', { x, y, inside: near });
   cursorWasNear = near;
 }
@@ -126,11 +136,12 @@ ipcMain.on('move', (e, p) => {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   win.setBounds({ x, y, width: WIN_W, height: WIN_H });
 });
-ipcMain.on('click-through', (e, on) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!on, OLD_HOOK ? { forward: true } : undefined); });
-ipcMain.on('event', (e, d) => {               // only used by the build's click test
-  if (!TEST_LOG) return;
-  try { fs.appendFileSync(TEST_LOG, JSON.stringify(Object.assign({ t: Date.now(), hidden }, d)) + '\n'); } catch (err) { /* ignore */ }
+ipcMain.on('click-through', (e, on) => {
+  if (!win || win.isDestroyed()) return;
+  win.setIgnoreMouseEvents(!!on, OLD_HOOK ? { forward: true } : undefined);
+  testLog({ type: 'ignore', on: !!on });
 });
+ipcMain.on('event', (e, d) => testLog(d));
 ipcMain.on('ready', () => {
   if (!SMOKE) return;
   console.log('SMOKE OK');

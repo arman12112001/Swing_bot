@@ -717,6 +717,7 @@ function handleHover(x, y, inside) {
   canvas.style.cursor = hover ? 'pointer' : 'default';
 }
 window.addEventListener('mousemove', (e) => handleHover(e.clientX, e.clientY, true));
+window.addEventListener('mousedown', (e) => testEvent({ type: 'mousedown', button: e.button, x: e.clientX, y: e.clientY }), true);
 document.documentElement.addEventListener('mouseleave', () => { if (!press) { hover = false; setThrough(true); } });
 api.on('cursor', (c) => { if (c) handleHover(c.x, c.y, c.inside); });
 api.on('mouse-reset', () => { press = null; hover = false; clickThrough = true; if (B.dragging) { B.dragging = false; B.onFloor = false; setState('fall', 0); } });
