@@ -2,7 +2,7 @@
    The game page itself is always loaded fresh from the internet when there is a connection
    (the saved copy is only used offline), so a new version shows up on the next open.
    With every update raise the number here and GAME_VERSION in index.html (same number). */
-const CACHE = 'love-run-game-v2';
+const CACHE = 'love-run-game-v3';
 const CORE = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 const FACE_NAMES = ['hero', 'me', 'dragon'];
 for (let i = 1; i <= 10; i++) FACE_NAMES.push('enemy' + i);

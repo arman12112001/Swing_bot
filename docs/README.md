@@ -201,7 +201,7 @@ Free GitHub Pages needs the repository to be **public**.
 2. Tap **⋮** → **Add to Home screen** (or **Install app**).
 3. Open it from the home screen. It starts fullscreen in landscape and works without internet after the first launch.
 
-**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N** in small text in the top-right corner, so you can see which version a phone is running. With every change, raise both `GAME_VERSION` in `index.html` and the number in `CACHE = 'love-run-game-v…'` in `sw.js` to the next number (they're both 2 now). GitHub Pages can take a minute or two to publish a change.
+**Updating:** when there's internet, the game always loads its newest version. If the app was left open in the background, it checks for an update when it comes back to the screen and reloads itself on the title screen (never in the middle of a level). The title screen shows **Version N** in small text in the top-right corner, so you can see which version a phone is running. With every change, raise both `GAME_VERSION` in `index.html` and the number in `CACHE = 'love-run-game-v…'` in `sw.js` to the next number (they're both 3 now). GitHub Pages can take a minute or two to publish a change.
 
 Phones that had a version from before the automatic updates show the old game one more time: open it, wait a few seconds, close it completely (swipe it away from recent apps) and open it again.
 

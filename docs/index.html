@@ -196,7 +196,7 @@ const MAX_DPR = 2;
 
 // Shown small in the top-right corner of the title screen. Raise it by 1 with every update,
 // together with CACHE in sw.js ('love-run-game-v' + the same number).
-const GAME_VERSION = 2;
+const GAME_VERSION = 3;
 
 /* ============================================================================
    2) LEVELS
@@ -670,15 +670,19 @@ function waitForServiceWorker(timeout) {
     const fin = (v) => { if (!done) { done = true; resolve(v); } };
     navigator.serviceWorker.addEventListener('controllerchange', () => fin(true));
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
-      .then(() => { if (navigator.serviceWorker.controller) fin(true); })
+      .then(async (reg) => {
+        if (!navigator.serviceWorker.controller) return;       // very first visit: wait until it takes over
+        // If a new version was published since last time, let it take over first, so new faces and voices show right away.
+        try { await reg.update(); } catch (e) { /* offline */ }
+        if (!reg.installing && !reg.waiting) fin(true);         // otherwise controllerchange finishes this
+      })
       .catch(() => fin(false));
-    if (navigator.serviceWorker.controller) fin(true);
     setTimeout(() => fin(false), timeout);
   });
 }
 async function loadAllFaces() {
   // Wait (briefly) for the offline cache so missing optional photos don't spam 404s.
-  await waitForServiceWorker(2500);
+  await waitForServiceWorker(6000);
   const names = ['hero', 'me'];
   for (let i = 1; i <= MAX_ENEMY_FACES; i++) names.push('enemy' + i);
   names.push('dragon');
@@ -3084,11 +3088,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { cle
 
 // Updates: every time the app comes back to the screen, ask for a newer version. When one is installed
 // while the game is open, reload on the title screen (never in the middle of a level).
-let updateReady = false;
+let updateReady = false, booted = false;
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) return;                        // first install, the page is already the newest
+    if (!hadController || !booted) return;             // first install or an update while starting: the page is already the newest
     updateReady = true;
     if (G.state === 'title') location.reload();
   });
@@ -3141,6 +3145,7 @@ loadAllFaces().catch(() => {}).then(() => {
   if (!faces.me) faces.me = buildFace(null, NAMES.me, '#4a6cf7');
   if (!faces.enemies.length) faces.enemies.push(buildFace(null, 'Bo', ENEMY_COLORS[0]));
   showTitle();
+  booted = true;
   loadVoices();
 });
 async function loadVoices() {
@@ -3165,7 +3170,7 @@ window.__loveRun = {
   eatCake: () => eatCake(G.player), eatPizza: () => eatPizza(G.player), eatBroccoli: () => eatBroccoli(G.player),
   hurtBoss: (n, notStomp) => damageBoss(n || 1, true, 0, !notStomp),
   eatShield: () => eatShield(G.player),
-  showTitle, get updateReady() { return updateReady; },
+  showTitle, faces, get updateReady() { return updateReady; },
   simulate(seconds, botFn, until) {
     const steps = Math.round(seconds / MAX_STEP);
     const stop = until || ((g) => g.state !== 'play' && g.state !== 'flag');
