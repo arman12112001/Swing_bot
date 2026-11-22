@@ -99,7 +99,7 @@ const B = {                         // the bear, in screen coordinates (x = midd
   x: 0, y: 0, vx: 0, vy: 0, dir: 1, state: 'idle', until: 0, phase: 0, t: 0, onFloor: true,
   dragging: false, sleeping: false, target: null,
 };
-let bubble = null, particles = [], hover = false, clickThrough = true;
+let bubble = null, particles = [], hover = false, clickThrough = true, bearHidden = false, hideTimer = null;
 let nextMessageAt = 0, pats = [], lastWinX = null, lastWinY = null, idleSec = 0;
 
 /* ---------- screen ---------- */
@@ -351,6 +351,7 @@ function setState(state, seconds) {
 }
 // Only during the build's click test: report what happens, and stand still so the test can click him.
 function testEvent(d) { if (settings.test && api.event) api.event(d); }
+window.addEventListener('error', (e) => testEvent({ type: 'error', message: String(e.message) }));
 function nextState() {
   if (settings.test) { setState('idle', 5); return; }
   const h = new Date().getHours(), night = h >= 23 || h < 6;
@@ -708,6 +709,7 @@ let press = null;
 // Is the mouse over him? Called with mouse moves inside the window, and with the cursor position the app
 // checks itself many times a second (that keeps working even when the window lets clicks through).
 function handleHover(x, y, inside) {
+  if (bearHidden) { hover = false; setThrough(true); return; }
   if (press && now() - press.t > 4 && !B.dragging) press = null;   // a press that never finished: forget it
   if (press) return;
   const onBear = inside !== false && overBear(x, y), onBtn = inside !== false ? btnAt(x, y) : null;
@@ -724,6 +726,7 @@ api.on('mouse-reset', () => { press = null; hover = false; clickThrough = true; 
 setInterval(() => { if (!press) api.setClickThrough(clickThrough); }, 3000);   // keep the app and the page in agreement
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
+  if (bearHidden) return;
   const x = e.clientX, y = e.clientY, b = btnAt(x, y);
   testEvent({ type: 'down', button: e.button, x, y, over: overBear(x, y) });
   if (b) { setMode(b.id); return; }                    // any button on ❤️ / 👊 picks the mode
@@ -731,8 +734,8 @@ canvas.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) e.preventDefault();
   const side = x >= bearX() ? 1 : -1;
   if (e.button !== 0) { press = { other: true, side, t: now() }; return; }   // right / middle click: just the action
-  canvas.setPointerCapture(e.pointerId);
   press = { sx: e.screenX, sy: e.screenY, offX: e.screenX - B.x, offY: e.screenY - B.y, t: now(), moved: false, side };
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* the page hadn't seen the mouse yet: fine, the click still counts */ }
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!press || press.other) return;
@@ -768,14 +771,25 @@ api.on('idle', (sec) => {
 api.on('command', (cmd) => {
   if (cmd === 'say') { if (B.sleeping) wakeUp(); else { say(randomMessage()); hearts(4, 18); if (B.onFloor && B.state !== 'walk' && !action) setState('wave', 2.4); } }
   else if (cmd === 'come') comeHere();
-  else if (cmd === 'bye') { action = null; B.flee = null; B.cryUntil = 0; B.sleeping = false; if (B.onFloor) setState('wave', 2); say('Bye bye! 👋', 1.6); }
-  else if (cmd === 'back') { if (B.onFloor) setState('wave', 2.4); say("I'm back! ❤️", 3); hearts(5, 20); }
+  else if (cmd === 'bye') {
+    action = null; B.flee = null; B.cryUntil = 0; B.sleeping = false; if (B.onFloor) setState('wave', 2); say('Bye bye! 👋', 1.6);
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { bearHidden = true; bubble = null; particles = []; press = null; hover = false; setThrough(true); testEvent({ type: 'hidden' }); }, 1300);
+  }
+  else if (cmd === 'back') {
+    clearTimeout(hideTimer); bearHidden = false; clickThrough = true; api.setClickThrough(true);
+    if (B.onFloor) setState('wave', 2.4); say("I'm back! ❤️", 3); hearts(5, 20); testEvent({ type: 'shown' });
+  }
 });
 
 /* ---------- start ---------- */
 let last = now();
 function frame() {
   const t = now(), dt = Math.min(0.05, t - last); last = t;
+  if (bearHidden) {                                     // hidden: draw nothing, check back a few times a second
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height);
+    setTimeout(frame, 250); return;
+  }
   update(dt); render();
   requestAnimationFrame(frame);
 }
@@ -804,4 +818,4 @@ window.addEventListener('resize', resize);
 
 // for testing
 window.__pet = { B, say, love, beat, doClick, setMode, setState, goToSleep, wakeUp, comeHere, startAction, startCry, fallAngle,
-  get mode() { return mode; }, get action() { return action; }, get bubble() { return bubble; }, get particles() { return particles; }, update, render };
+  get mode() { return mode; }, get hidden() { return bearHidden; }, get action() { return action; }, get bubble() { return bubble; }, get particles() { return particles; }, update, render };

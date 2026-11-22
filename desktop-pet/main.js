@@ -15,7 +15,7 @@ const HOTKEY = 'Control+Alt+B', HOTKEY_LABEL = 'Ctrl+Alt+B';   // hides him / br
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
-let win = null, tray = null, hidden = false, hideTimer = null, hotkeyOk = false;
+let win = null, tray = null, hidden = false, hotkeyOk = false;
 let settings = { sound: false, startWithWindows: true };
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
@@ -65,18 +65,17 @@ function testLog(d) {                      // only during the build's click test
 }
 
 // Hide / bring back: Ctrl+Alt+B, the Love Bear icon on the desktop, or the tray menu.
+// The window itself is never hidden: on Windows, hiding and showing it again made it swallow clicks.
+// Instead the page stops drawing him and lets every click through.
 function hideBear() {
   if (!win || hidden) return;
   hidden = true;
-  send('command', 'bye');                              // he waves bye first
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => { if (hidden && win) win.hide(); }, 1300);
+  send('command', 'bye');                              // he waves bye, then disappears
   buildTrayMenu();
 }
 function showBear() {
-  clearTimeout(hideTimer);
   const wasHidden = hidden; hidden = false;
-  if (win) { win.showInactive(); resetMouse(); if (wasHidden) send('command', 'back'); }
+  if (win) { if (!win.isVisible()) win.showInactive(); resetMouse(); if (wasHidden) send('command', 'back'); }
   buildTrayMenu();
 }
 // Start the mouse handling fresh: clicks go through, until the cursor is over the bear again.
