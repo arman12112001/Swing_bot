@@ -361,7 +361,8 @@ function nextState() {
   else if (r < 0.93) setState('sit', rand(8, 20));
   else setState('wave', 2.2);
 }
-function wakeUp() {
+function wakeUp(byClick) {
+  if (byClick) testEvent({ type: 'action', action: 'wake' });
   B.sleeping = false; particles = particles.filter((q) => q.kind !== 'z');
   setState('wave', 2.6); say(pick(WELCOME_BACK)); hearts(5, 20); play('laugh');
 }
@@ -398,7 +399,7 @@ function startAction(type, kind, side) {
 }
 function crying() { return B.cryUntil > now(); }
 function love(side) {
-  if (B.sleeping) { wakeUp(); return; }
+  if (B.sleeping) { wakeUp(true); return; }          // clicking a sleeping bear wakes him up
   if (crying() || B.state === 'cry') {            // love makes him stop crying
     B.cryUntil = 0; beats = []; cryPending = false;
     startAction('love', 'comfort', side); say(pick(COMFORT_LINES), 3); hearts(12, 26); play('giggle'); return;

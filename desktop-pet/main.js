@@ -9,7 +9,6 @@ const fs = require('fs');
 
 const SMOKE = process.argv.includes('--smoke-test');   // used by the build to check the app starts
 const TEST_LOG = process.env.LOVE_BEAR_TEST_LOG || '';  // used by the build's click test (records what the bear does)
-const OLD_HOOK = process.env.LOVE_BEAR_HOVER === 'hook'; // test only: the old way (Windows mouse hook) to compare against
 const WIN_W = 300, WIN_H = 330;                        // the window around the bear (room for the speech bubble)
 const HOTKEY = 'Control+Alt+B', HOTKEY_LABEL = 'Ctrl+Alt+B';   // hides him / brings him back
 
@@ -46,7 +45,7 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false, contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.setAlwaysOnTop(true, 'screen-saver');
-  win.setIgnoreMouseEvents(true, OLD_HOOK ? { forward: true } : undefined);
+  win.setIgnoreMouseEvents(true);
   win.setMenu(null);
   if (TEST_LOG && process.platform === 'win32') {   // test only: which raw mouse messages reach the window
     for (const [msg, name] of [[0x21, 'WM_MOUSEACTIVATE'], [0x201, 'WM_LBUTTONDOWN'], [0x204, 'WM_RBUTTONDOWN'], [0x210, 'WM_PARENTNOTIFY']]) win.hookWindowMessage(msg, () => testLog({ type: 'msg', name }));
@@ -82,7 +81,6 @@ function showBear() {
 function resetMouse() {
   if (!win || win.isDestroyed()) return;
   win.setAlwaysOnTop(true, 'screen-saver');
-  if (OLD_HOOK) return;
   win.setIgnoreMouseEvents(true);
   testLog({ type: 'reset' });
   cursorWasNear = false;
@@ -91,7 +89,7 @@ function resetMouse() {
 // Where is the mouse? Sent to the bear's page while it's over (or just left) his window.
 let cursorWasNear = false;
 function pollCursor() {
-  if (OLD_HOOK || !win || win.isDestroyed() || hidden || !win.isVisible()) return;
+  if (!win || win.isDestroyed() || hidden || !win.isVisible()) return;
   const p = screen.getCursorScreenPoint(), b = win.getBounds();
   const x = p.x - b.x, y = p.y - b.y, near = x >= -2 && y >= -2 && x <= b.width + 2 && y <= b.height + 2;
   if (near !== cursorWasNear) testLog({ type: 'near', near, cursor: p, win: b });
@@ -137,7 +135,7 @@ ipcMain.on('move', (e, p) => {
 });
 ipcMain.on('click-through', (e, on) => {
   if (!win || win.isDestroyed()) return;
-  win.setIgnoreMouseEvents(!!on, OLD_HOOK ? { forward: true } : undefined);
+  win.setIgnoreMouseEvents(!!on);
   testLog({ type: 'ignore', on: !!on });
 });
 ipcMain.on('event', (e, d) => testLog(d));
