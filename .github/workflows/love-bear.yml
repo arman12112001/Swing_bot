@@ -30,9 +30,15 @@ jobs:
       - name: Check that the app starts on Windows
         shell: pwsh
         run: |
+          $env:LOVE_BEAR_SMOKE_FILE = "$env:RUNNER_TEMP\love-bear-smoke.json"
           $p = Start-Process -FilePath "dist\win-unpacked\Love Bear.exe" -ArgumentList "--smoke-test" -PassThru -Wait
           Write-Host "smoke test exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { exit 1 }
+          if (-not (Test-Path $env:LOVE_BEAR_SMOKE_FILE)) { Write-Host "the bear never reported ready"; exit 1 }
+          $r = Get-Content $env:LOVE_BEAR_SMOKE_FILE -Raw
+          Write-Host "bear: $r"
+          $j = $r | ConvertFrom-Json
+          if (-not $j.ok -or -not $j.visible -or -not $j.tray) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:
           name: LoveBear-Setup

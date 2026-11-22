@@ -101,7 +101,17 @@ ipcMain.on('move', (e, p) => {
 });
 ipcMain.on('click-through', (e, on) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!on, { forward: true }); });
 ipcMain.on('ready', () => {
-  if (SMOKE) { console.log('SMOKE OK'); setTimeout(() => app.exit(0), 300); }
+  if (!SMOKE) return;
+  console.log('SMOKE OK');
+  setTimeout(() => {                                   // the build checks this file to be sure the bear really appeared
+    const out = process.env.LOVE_BEAR_SMOKE_FILE;
+    if (out) {
+      try {
+        fs.writeFileSync(out, JSON.stringify({ ok: true, visible: !!(win && win.isVisible()), bounds: win && win.getBounds(), workArea: screenInfo().workArea, tray: !!tray }));
+      } catch (e) { /* ignore */ }
+    }
+    app.exit(0);
+  }, 1500);
 });
 
 app.on('second-instance', () => { if (hiddenUntil) showAgain(); send('command', 'hello-again'); });
