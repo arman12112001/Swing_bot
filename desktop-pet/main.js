@@ -100,6 +100,8 @@ ipcMain.on('move', (e, p) => {
   win.setBounds({ x, y, width: WIN_W, height: WIN_H });
 });
 ipcMain.on('click-through', (e, on) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!on, { forward: true }); });
+ipcMain.on('hide', () => hideForAnHour());
+ipcMain.on('quit', () => app.quit());
 ipcMain.on('ready', () => {
   if (!SMOKE) return;
   console.log('SMOKE OK');
