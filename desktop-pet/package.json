@@ -1,7 +1,7 @@
 {
   "name": "love-bear",
   "productName": "Love Bear",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A little brown bear that keeps her company on her laptop.",
   "main": "main.js",
   "private": true,
@@ -17,17 +17,30 @@
   "build": {
     "appId": "app.lovebear.desktop",
     "productName": "Love Bear",
-    "files": ["main.js", "preload.js", "pet.html", "pet.js", "assets/**"],
-    "directories": { "output": "dist", "buildResources": "build" },
-    "win": { "target": "nsis", "icon": "build/icon.png" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "pet.html",
+      "pet.js",
+      "assets/**"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "runAfterFinish": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "Love Bear",
-      "artifactName": "LoveBear-Setup-${version}.${ext}"
+      "artifactName": "LoveBear-Setup-${version}.${ext}",
+      "include": "build/installer.nsh"
     }
   }
 }

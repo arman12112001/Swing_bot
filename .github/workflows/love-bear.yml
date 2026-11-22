@@ -39,6 +39,39 @@ jobs:
           Write-Host "bear: $r"
           $j = $r | ConvertFrom-Json
           if (-not $j.ok -or -not $j.visible -or -not $j.tray) { exit 1 }
+      - name: Check that installing over the old version closes and replaces it
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $prev = gh release list --limit 30 --json tagName | ConvertFrom-Json | ForEach-Object { $_.tagName } |
+            Where-Object { $_ -like 'love-bear-v*' -and $_ -ne "love-bear-v$version" } | Select-Object -First 1
+          if (-not $prev) { Write-Host "no older release to test against"; exit 0 }
+          gh release download $prev --pattern "LoveBear-Setup-*.exe" --dir "$env:RUNNER_TEMP\old" --clobber
+          $oldSetup = Get-ChildItem "$env:RUNNER_TEMP\old\LoveBear-Setup-*.exe" | Select-Object -First 1
+          Start-Process $oldSetup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'Love Bear.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { Write-Host "the old version did not install"; exit 1 }
+          Write-Host "old version installed: $($exe.VersionInfo.ProductVersion) ($prev)"
+          Get-Process -Name 'Love Bear' -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Process $exe.FullName
+          Start-Sleep 6
+          $before = @(Get-Process -Name 'Love Bear' -ErrorAction SilentlyContinue)
+          Write-Host "old bear running: $($before.Count) processes"
+          if ($before.Count -eq 0) { exit 1 }
+          $newSetup = Get-ChildItem dist\LoveBear-Setup-*.exe | Select-Object -First 1
+          $p = Start-Process $newSetup.FullName -ArgumentList '/S' -PassThru -Wait
+          Write-Host "new installer exit code: $($p.ExitCode)"
+          Start-Sleep 4
+          $still = @($before | Where-Object { -not $_.HasExited })
+          $exe2 = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'Love Bear.exe' | Select-Object -First 1
+          $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Love Bear.lnk'
+          Write-Host "old processes still running: $($still.Count)"
+          Write-Host "installed version now: $($exe2.VersionInfo.ProductVersion)"
+          Write-Host "desktop shortcut: $(Test-Path $lnk)"
+          Get-Process -Name 'Love Bear' -ErrorAction SilentlyContinue | Stop-Process -Force
+          if ($still.Count -gt 0 -or "$($exe2.VersionInfo.ProductVersion)" -notlike "$version*" -or -not (Test-Path $lnk)) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:
           name: LoveBear-Setup

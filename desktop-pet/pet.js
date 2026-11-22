@@ -27,7 +27,9 @@ const MESSAGES = [
 ];
 const LATE_NIGHT = ["It's really late, my love. Sleep soon? 😴", 'Bed time, cutie! 🌙'];
 const LUNCH = ['Lunch time! Eat something yummy 🍝'];
-// LEFT click = love. Each click picks a different one.
+// Hover over him and two buttons pop up: ❤️ Love and 👊 Beat. After picking one, clicking him
+// (any mouse button) does that. Each click picks a different action.
+// LOVE mode:
 const LOVE_LINES = {
   kiss:    ['Mwah! 😘', 'Kisses for you! 💋', 'Mwah mwah mwah! 😚'],
   hug:     ['Big bear hug! 🤗', 'Come here, cutie! 🤗', 'Squeeeeze! 🧸'],
@@ -38,7 +40,7 @@ const LOVE_LINES = {
   flykiss: ['Catch my kiss! 😘', 'Flying kiss for you! 💋'],
 };
 const MANY_PATS = `I love you sooo much, ${HER_NAME}! ❤️❤️❤️`;
-// RIGHT click = beat him up (all in good fun). Each click is a different way.
+// BEAT mode (all in good fun). Most hits knock him flat on his back, then he gets up again:
 const BEAT_LINES = {
   hammer: ['Ouch! 😵', 'My head! 😵‍💫', 'Bonk?! 🥴'],
   punch:  ['Owww! 🥊', 'Knockout! 😵', 'Nice punch! 😅'],
@@ -48,7 +50,12 @@ const BEAT_LINES = {
   kick:   ['Wheee… ouch! 🙃', 'I can fly?! 😱', 'Ouch, my bum! 😣'],
   flick:  ['Ow, my forehead! 🥺', 'Hey! 😤', 'Tiny but painful 😢'],
 };
-const RUN_AWAY = 'Aaaah! Help! 😱';                 // after 5 quick hits he runs and hides at the edge…
+// Hit him 5 times in a row and he sits down and cries until she gives him love…
+const CRY_LINES = ['Waaah! 😭', 'You hurt me… 😢', 'Sniff sniff… 🥺', 'Nobody loves me 😭'];
+const CRY_SECONDS = 10;
+const COMFORT_LINES = ["Sniff… okay, I'm happy again ❤️", 'Hehe, I love you too 🥰', 'Hug fixes everything 🤗'];
+// …and if she keeps hitting him while he cries, he runs off and hides at the edge of the screen.
+const RUN_AWAY = 'Aaaah! Help! 😱';
 const SORRY_LINES = ['Still love me? 👉👈', `Sorry ${HER_NAME}, I'll behave 🥺`, "Okay okay, I'm sorry! 🙏"];
 const DROP_REPLIES = ['Wheee! 😆', 'Oof! Hehe', 'Again? 🙈', 'I can fly! 🐻✨'];
 const WELCOME_BACK = [`Welcome back, ${HER_NAME}! ❤️`, "Yay, you're back! 🥰", 'Missed you! 💕'];
@@ -188,6 +195,14 @@ function head(cx, bottom, Wd, tilt, fx) {
     g.globalAlpha = 0.45 * fx.blush; g.fillStyle = '#ff5c8a';
     for (const side of [-1, 1]) { g.beginPath(); g.ellipse(side * Wd * 0.22, Hd * 0.17, Wd * 0.11, Wd * 0.065, 0, 0, TAU); g.fill(); }
     g.globalAlpha = 1;
+  }
+  if (fx && fx.tears > 0) {                            // tears running down his cheeks
+    const tw = Wd * 0.075;
+    g.fillStyle = 'rgba(80,165,255,0.85)';
+    for (const side of [-1, 1]) {
+      const ex = side * Wd * 0.17, ey = Hd * 0.05, len = Hd * (0.2 + 0.06 * Math.sin(now() * 6 + side)) * fx.tears;
+      rr(ex - tw / 2, ey, tw, len, tw / 2); g.fill();
+    }
   }
   if (fx && fx.slap) {                                 // red mark on the slapped cheek
     g.globalAlpha = 0.5 * Math.abs(fx.slap); g.fillStyle = '#ff2020';
@@ -356,12 +371,17 @@ function comeHere() {
   B.target = scr.workArea.x + scr.workArea.width / 2; setState('walk', 30);
 }
 
-/* ---------- clicks: left = love, right = beat him up ---------- */
-let action = null, beats = [], fleePending = false;   // action = { type, kind, t, dur, side, hit }
-const ACTION_DUR = { kiss: 1.7, hug: 1.9, hearts: 1.5, blush: 2.1, rose: 2.4, jump: 1.3, flykiss: 1.8,
-  hammer: 1.9, punch: 1.5, slap: 1.7, pillow: 1.6, pan: 2.1, kick: 2.4, flick: 1.3 };
+/* ---------- clicking him: Love mode or Beat mode (pick with the ❤️ / 👊 buttons that pop up on hover) ---------- */
+let mode = 'love';
+try { if (localStorage.getItem('loveBear.mode') === 'beat') mode = 'beat'; } catch (e) { /* no storage */ }
+let action = null, beats = [], fleePending = false, cryPending = false;   // action = { type, kind, t, dur, side, hit }
+const ACTION_DUR = { kiss: 1.7, hug: 1.9, hearts: 1.5, blush: 2.1, rose: 2.4, jump: 1.3, flykiss: 1.8, comfort: 2.4,
+  hammer: 2.5, punch: 2.2, slap: 2.2, pillow: 2.3, pan: 2.1, kick: 2.4, flick: 1.3 };
 const HIT_AT = { hammer: 0.24, punch: 0.15, slap: 0.15, pillow: 0.24, pan: 0.26, kick: 0.2, flick: 0.14 };
 const COMIC = { hammer: 'BONK!', punch: 'POW!', slap: 'SLAP!', pillow: 'WHAP!', pan: 'BONNNG!', kick: 'BOOT!', flick: 'FLICK!' };
+// Talking-Tom style: these hits knock him flat on his back; he lies there dizzy, then gets back up.
+const FALL_AT = { hammer: 0.55, punch: 0.18, slap: 0.2, pillow: 0.3 };
+const FALL_TIME = 0.32, LIE_TIME = 1.0, UP_TIME = 0.4, FALL_PIVOT = 28;
 function shuffleBag(list) { let b = []; return () => { if (!b.length) b = list.slice().sort(() => Math.random() - 0.5); return b.pop(); }; }
 const nextLove = shuffleBag(Object.keys(LOVE_LINES)), nextBeat = shuffleBag(Object.keys(BEAT_LINES));
 function startAction(type, kind, side) {
@@ -371,8 +391,13 @@ function startAction(type, kind, side) {
   B.dir = action.side;                          // he turns towards her
   setState('act', 0);
 }
+function crying() { return B.cryUntil > now(); }
 function love(side) {
   if (B.sleeping) { wakeUp(); return; }
+  if (crying() || B.state === 'cry') {            // love makes him stop crying
+    B.cryUntil = 0; beats = []; cryPending = false;
+    startAction('love', 'comfort', side); say(pick(COMFORT_LINES), 3); hearts(12, 26); play('giggle'); return;
+  }
   const t = now(); pats = pats.filter((p) => t - p < 4); pats.push(t);
   if (pats.length >= 5) { pats = []; startAction('love', 'hearts', side); say(MANY_PATS); hearts(18, 28); play('giggle'); return; }
   const kind = nextLove();
@@ -383,11 +408,32 @@ function love(side) {
 }
 function beat(side) {
   if (B.state === 'flee' && B.flee && B.flee.phase === 'run') return;   // already running away
-  const t = now(); beats = beats.filter((p) => t - p < 6); beats.push(t);
-  const kind = nextBeat();
-  startAction('beat', kind, side);
-  if (beats.length >= 5) { beats = []; fleePending = true; }           // 5 hits in 6 seconds: he runs off after this one
+  const t = now(), wasCrying = crying() || B.state === 'cry';
+  beats = beats.filter((p) => t - p < 8); beats.push(t);
+  startAction('beat', nextBeat(), side);
+  if (wasCrying) B.cryUntil = Math.max(B.cryUntil, t + 6);   // hitting him while he cries keeps him crying
+  if (beats.length >= 5) { beats = []; if (wasCrying) { fleePending = true; B.cryUntil = 0; } else cryPending = true; }
 }
+function doClick(side) { if (mode === 'beat') beat(side); else love(side); }
+function setMode(m) {
+  mode = m;
+  try { localStorage.setItem('loveBear.mode', m); } catch (e) { /* ignore */ }
+  if (m === 'love') { say('Love mode ❤️ Click me!', 2.2); hearts(5, 20); } else { say('Beat mode 👊 If you dare! 😅', 2.2); sparks(6, 0, -120); }
+  btnUntil = now() + 2.5;
+}
+function startCry() {
+  action = null; B.cryUntil = now() + CRY_SECONDS; B.cryLineT = 0; B.cryLine = 0; B.tearT = 0;
+  setState('cry', 0); play('cry');
+}
+function fallAngle(a) {
+  if (!a || FALL_AT[a.kind] == null || a.t < FALL_AT[a.kind]) return 0;
+  const full = -a.side * 1.45, t = a.t - FALL_AT[a.kind];
+  if (t < FALL_TIME) { const p = t / FALL_TIME; return full * p * p; }                       // falls, faster and faster
+  if (t < FALL_TIME + LIE_TIME) { const b = t - FALL_TIME; return full * (1 - (b < 0.22 ? 0.09 * Math.sin(b / 0.22 * Math.PI) : 0)); }   // little bounce
+  const u = clamp((t - FALL_TIME - LIE_TIME) / UP_TIME, 0, 1); return full * (1 - u) * (1 - u);   // gets back up
+}
+function fallSlide(ang) { return -Math.sign(ang) * 46 * Math.min(1, Math.abs(ang) / 1.45); }   // his feet slide forward as he goes down
+function lying(a) { return !!a && FALL_AT[a.kind] != null && a.t > FALL_AT[a.kind] + FALL_TIME * 0.6 && a.t < FALL_AT[a.kind] + FALL_TIME + LIE_TIME + UP_TIME * 0.5; }
 function updateAction(dt) {
   const a = action;
   if (!a) return;
@@ -397,28 +443,34 @@ function updateAction(dt) {
     a.hit = true; play('atata');
     comic(COMIC[a.kind], s * 34, headY - 30);
     say(pick(BEAT_LINES[a.kind]), 2.4);
-    if (a.kind === 'hammer' || a.kind === 'pan') { a.dizzy = 1.6; sparks(8, 0, headY - 18); }
-    if (a.kind === 'punch') { B.kv = -s * 320; sparks(7, s * 22, headY + 10); }
+    if (a.kind === 'hammer' || a.kind === 'pan') { a.dizzy = true; sparks(8, 0, headY - 18); }
+    if (a.kind === 'punch') { B.kv = -s * 200; sparks(7, s * 22, headY + 10); }
     if (a.kind === 'slap') sparks(5, s * 16, headY + 18);
     if (a.kind === 'pillow') feathers(16, s * 12, headY - 6);
     if (a.kind === 'kick') { B.vy = -560; B.vx = -s * 240; B.onFloor = false; sparks(6, s * 16, -30); }
     if (a.kind === 'flick') sparks(4, s * 10, headY - 8);
   }
+  if (FALL_AT[a.kind] != null && !a.thud && a.t >= FALL_AT[a.kind] + FALL_TIME) {   // hits the floor
+    a.thud = true; a.dizzy = true; comic('THUD!', -s * 40, -70); sparks(6, -s * 50, -10);
+  }
   if (a.type === 'love') {
     if (a.kind === 'kiss' && a.n < 3 && a.t > 0.25 + a.n * 0.3) { a.n++; emojiBit('💋', mouthX + s * 10, headY + 22, s * rand(30, 60), rand(-70, -45), 16, 1.3, 6); }
-    if (a.kind === 'hug' && a.t > a.n * 0.35 && a.n < 5) { a.n++; hearts(2, 26); }
+    if ((a.kind === 'hug' || a.kind === 'comfort') && a.t > a.n * 0.35 && a.n < 5) { a.n++; hearts(2, 26); }
     if (a.kind === 'blush' && a.t > 0.3 + a.n * 0.5 && a.n < 3) { a.n++; hearts(2, 14); }
     if (a.kind === 'flykiss' && a.t > 0.5 && a.n < 1) { a.n++; emojiBit('💋', s * 24, headY + 26, s * 150, -35, 16, 1.2, 22); hearts(3, 12); }
   }
   if (a.t >= a.dur) {
     action = null;
     if (fleePending) { fleePending = false; startFlee(); }
+    else if (cryPending) { cryPending = false; startCry(); }
+    else if (crying()) setState('cry', 0);
     else if (B.onFloor) setState('idle', rand(1.5, 3));
   }
 }
-// After 5 quick hits he runs to the far side of the screen, hides half off the edge, then comes back to apologise.
+// After being hit while crying, he runs to the far side of the screen, hides half off the edge, then comes back to apologise.
 function startFlee() {
   const wa = scr.workArea, goLeft = B.x > wa.x + wa.width / 2;
+  B.cryUntil = 0;
   B.flee = { phase: 'run', tx: goLeft ? wa.x + 2 : wa.x + wa.width - 2, back: goLeft ? wa.x + 110 : wa.x + wa.width - 110, t: 0 };
   setState('flee', 0); say(RUN_AWAY, 2.2);
 }
@@ -436,22 +488,32 @@ function updateFlee(dt) {
     }
   } else if (f.phase === 'hide' && f.t > 2.6) { f.phase = 'back'; f.t = 0; }
 }
+function updateCry(dt) {
+  B.cryLineT -= dt;
+  if (B.cryLineT <= 0) { say(CRY_LINES[B.cryLine++ % CRY_LINES.length], 2.2); B.cryLineT = 2.6; }
+  B.tearT -= dt;
+  if (B.tearT <= 0) {
+    B.tearT = 0.18;
+    for (const side of [-1, 1]) particles.push({ kind: 'tear', x: side * 14, y: -54, vx: side * rand(10, 35), vy: rand(-30, 5), life: 0.8, age: 0 });
+  }
+  if (!crying()) { B.cryUntil = 0; setState('sit', rand(5, 9)); say('Sniff… 🥺', 2.5); }
+}
 // How the body squashes, tilts and turns during an action.
 function actionFx() {
-  const fx = { sx: 1, sy: 1, rot: 0, lean: 0, blush: 0, slap: 0, headTilt: 0, arms: null, prop: null };
+  const fx = { sx: 1, sy: 1, rot: 0, fall: 0, lean: 0, blush: 0, slap: 0, headTilt: 0, arms: null, prop: null, tears: 0 };
+  if (B.state === 'cry') { fx.tears = 1; fx.sy = 1 + 0.03 * Math.sin(now() * 16); fx.headTilt = 0.06 * Math.sin(now() * 9); }
   const a = action;
   if (!a) return fx;
   const t = a.t, s = a.side, after = (t0, len) => clamp(1 - (t - t0) / len, 0, 1) * (t >= t0 ? 1 : 0);
+  fx.fall = fallAngle(a);
   switch (a.kind) {
-    case 'hammer': { const k = after(0.24, 0.5); fx.sy = 1 - 0.3 * k; fx.sx = 1 + 0.16 * k; break; }
+    case 'hammer': { const k = after(0.24, 0.3); fx.sy = 1 - 0.3 * k; fx.sx = 1 + 0.16 * k; break; }
     case 'pan': { const k = t < 0.26 ? 0 : clamp(1 - (t - 0.9) / 0.6, 0, 1); fx.sy = 1 - 0.45 * k; fx.sx = 1 + 0.32 * k; break; }
-    case 'punch': fx.rot = -s * 0.4 * after(0.15, 0.6); break;
-    case 'slap': fx.headTilt = -s * 0.5 * after(0.15, 0.8); fx.slap = s * after(0.15, 1.5); break;
-    case 'pillow': { const k = after(0.24, 0.5); fx.rot = -s * 0.22 * k; fx.sy = 1 - 0.1 * k; break; }
+    case 'slap': fx.headTilt = -s * 0.5 * after(0.15, 0.8); fx.slap = s * after(0.15, 1.8); break;
     case 'kick': if (!B.onFloor) fx.rot = -s * (t - 0.2) * 11; break;
     case 'flick': fx.headTilt = -s * 0.28 * after(0.14, 0.5); fx.rot = -s * 0.06 * after(0.14, 0.5); break;
     case 'kiss': fx.lean = Math.sin(clamp(t / 0.35, 0, 1) * Math.PI / 2) * clamp((a.dur - t) / 0.4, 0, 1); break;
-    case 'hug': { fx.arms = 'hug'; const p = 0.5 + 0.5 * Math.sin(t * 8); fx.sx = 1 + 0.045 * p; fx.sy = 1 - 0.03 * p; break; }
+    case 'hug': case 'comfort': { fx.arms = 'hug'; const p = 0.5 + 0.5 * Math.sin(t * 8); fx.sx = 1 + 0.045 * p; fx.sy = 1 - 0.03 * p; if (a.kind === 'comfort') fx.blush = clamp(t / 0.5, 0, 1) * clamp((a.dur - t) / 0.5, 0, 1); break; }
     case 'blush': fx.blush = clamp(Math.min(t / 0.3, (a.dur - t) / 0.5), 0, 1); fx.headTilt = s * 0.12 * fx.blush; break;
     case 'rose': fx.arms = 'offer'; fx.prop = '🌹'; break;
     case 'flykiss': if (t > 0.35) fx.arms = 'throw'; else fx.lean = 0.5; break;
@@ -471,7 +533,7 @@ function drawProps(cx, feetY) {
   };
   const lerp = (u, v) => u + (v - u) * e;
   switch (a.kind) {
-    case 'hammer': emoji('🔨', cx + s * lerp(64, 22), lerp(top - 56, top - 4), 40, s * lerp(-0.9, 0.35) , s < 0); break;
+    case 'hammer': emoji('🔨', cx + s * lerp(64, 22), lerp(top - 56, top - 4), 40, s * lerp(-0.9, 0.35), s < 0); break;
     case 'pan': emoji('🍳', cx + s * lerp(30, 4), lerp(top - 80, top - 8), 46, s * lerp(-0.5, 0), s < 0); break;
     case 'punch': emoji('🥊', cx + s * (lerp(130, 36) + out * 50), feetY - 96, 38, 0, s > 0); break;
     case 'slap': emoji('🖐️', cx + s * (lerp(110, 26) + out * 30), feetY - 92, 34, s * lerp(0.6, -0.2), s > 0); break;
@@ -486,15 +548,18 @@ function drawProps(cx, feetY) {
   }
   g.globalAlpha = 1;
 }
+// Dizzy stars around his head (standing after a bonk, or lying on the floor after a knock-down).
 function drawDizzy(cx, feetY) {
   const a = action;
-  if (!a || !a.dizzy || !a.hit) return;
-  const left = a.dizzy - (a.t - HIT_AT[a.kind]);
-  if (left <= 0) return;
-  const headTop = feetY - 128 + (a.kind === 'pan' ? 40 : 10);
-  g.globalAlpha = clamp(left / 0.4, 0, 1);
+  if (!a || !a.dizzy) return;
+  const left = a.dur - a.t;
+  if (left <= 0.3) return;
+  const ang = fallAngle(a), squash = a.kind === 'pan' ? 40 : a.kind === 'hammer' && !ang ? 12 : 0;
+  const px = Math.sign(ang) * FALL_PIVOT, vx = -px, vy = -97;                  // his head, turned with the fall
+  const hx = cx + (ang ? fallSlide(ang) : 0) + px + vx * Math.cos(ang) - vy * Math.sin(ang), hy = feetY - 3 + vx * Math.sin(ang) + vy * Math.cos(ang) - (ang ? 0 : 26) + squash;
+  g.globalAlpha = clamp(left / 0.5, 0, 1);
   for (let i = 0; i < 3; i++) {
-    const ang = a.t * 6 + i * TAU / 3, x = cx + Math.cos(ang) * 26, y = headTop + Math.sin(ang) * 7;
+    const k = a.t * 6 + i * TAU / 3, x = hx + Math.cos(k) * 26, y = hy + Math.sin(k) * 7;
     g.fillStyle = '#ffd43b'; starPath(x, y, 5.5); g.fill(); g.lineWidth = 1; g.strokeStyle = '#d69e00'; g.stroke();
   }
   g.globalAlpha = 1;
@@ -503,9 +568,13 @@ function drawDizzy(cx, feetY) {
 function update(dt) {
   B.t += dt;
   if (bubble) { bubble.t += dt; if (bubble.t > bubble.dur) bubble = null; }
-  for (const q of particles) { q.age += dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.kind === 'heart') q.vy += 10 * dt; if (q.kind === 'feather') { q.vy += 60 * dt; q.vx *= 0.97; } }
+  for (const q of particles) {
+    q.age += dt; q.x += q.vx * dt; q.y += q.vy * dt;
+    if (q.kind === 'heart') q.vy += 10 * dt;
+    if (q.kind === 'feather') { q.vy += 60 * dt; q.vx *= 0.97; }
+    if (q.kind === 'tear') q.vy += 320 * dt;
+  }
   particles = particles.filter((q) => q.age < q.life);
-  if (menu) { menu.t += dt; if (menu.t > 8 || now() - menu.lastOver > 2.5) menu = null; }
   updateAction(dt);
 
   if (B.dragging) { syncWindow(); return; }
@@ -526,6 +595,7 @@ function update(dt) {
   switch (B.state) {
     case 'act': if (!action) setState('idle', rand(1, 2)); break;
     case 'flee': updateFlee(dt); break;
+    case 'cry': updateCry(dt); break;
     case 'walk': {
       const fast = B.target != null;
       if (fast) B.dir = B.target > B.x ? 1 : -1;
@@ -545,29 +615,42 @@ function update(dt) {
       if (B.state === 'idle' && B.t > 1.2 && Math.random() < dt * 0.25) B.dir = -B.dir;   // looks around
       if (B.until && B.t > B.until) nextState();
   }
-  // sweet messages every now and then (not while he's napping, busy or hiding)
+  // sweet messages every now and then (not while he's napping, busy, crying or hiding)
   const t = now();
   if (t >= nextMessageAt) {
     nextMessageAt = t + rand(MESSAGE_MINUTES[0], MESSAGE_MINUTES[1]) * 60;
-    if (!B.sleeping && !bubble && !action && B.state !== 'flee') { say(randomMessage()); if (B.state !== 'walk') setState('wave', 2.4); hearts(3, 18); }
+    if (!B.sleeping && !bubble && !action && B.state !== 'flee' && B.state !== 'cry') { say(randomMessage()); if (B.state !== 'walk') setState('wave', 2.4); hearts(3, 18); }
   }
   syncWindow();
 }
 
+function drawTears(cx, feetY) {
+  for (const q of particles) {
+    if (q.kind !== 'tear') continue;
+    const x = cx + q.x, y = feetY + q.y, a = clamp(1 - q.age / q.life, 0, 1);
+    g.globalAlpha = 0.85 * a; g.fillStyle = '#4da3ff';
+    g.beginPath(); g.moveTo(x, y - 5); g.quadraticCurveTo(x + 3.2, y, x, y + 2.8); g.quadraticCurveTo(x - 3.2, y, x, y - 5); g.fill();
+  }
+  g.globalAlpha = 1;
+}
+let btnsWereShown = false;
 function render() {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, W, H);
   const cx = bearX(), feetY = H - FOOT_PAD;
-  if (B.onFloor && !B.dragging) {                      // soft shadow on the taskbar edge
+  const fx = actionFx();
+  if (B.onFloor && !B.dragging && !fx.fall) {          // soft shadow on the taskbar edge
     g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.ellipse(cx, feetY + 1, 26, 5, 0, 0, TAU); g.fill();
   }
   let pose = B.state;
   if (B.dragging) pose = 'dangle';
   else if (!B.onFloor) pose = B.state === 'fall' || (action && action.kind === 'kick') ? 'fall' : 'jump';
+  else if (fx.fall) pose = 'fall';
   else if (pose === 'flee') pose = B.flee && B.flee.phase === 'hide' ? 'idle' : 'walk';
+  else if (pose === 'cry') pose = 'sit';
   else if (pose === 'hop' || pose === 'idle' || pose === 'act') pose = 'idle';
-  const fx = actionFx();
   g.save(); g.translate(cx, feetY);
+  if (fx.fall) { const px = Math.sign(fx.fall) * FALL_PIVOT; g.translate(fallSlide(fx.fall) + px, -3); g.rotate(fx.fall); g.translate(-px, 3); }   // feet slide forward, tips over on one foot
   if (fx.rot) { g.translate(0, -50); g.rotate(fx.rot); g.translate(0, 50); }
   if (fx.sx !== 1 || fx.sy !== 1) g.scale(fx.sx, fx.sy);
   drawBear(0, 0, pose, B.dir, now(), B.phase, fx);
@@ -575,88 +658,74 @@ function render() {
   drawDizzy(cx, feetY);
   drawProps(cx, feetY);
   drawParticles(cx, feetY);
-  if (!menu) drawBubble(cx, feetY - (pose === 'sit' || pose === 'sleep' ? 118 : 134));
-  drawHideButton(); drawMenu();
+  drawTears(cx, feetY);
+  drawBubble(cx, feetY - (pose === 'sit' || pose === 'sleep' ? 118 : 134));
+  const shown = btnsShown();
+  if (shown && !btnsWereShown) btnSince = now();
+  btnsWereShown = shown;
+  drawModeBtns();
 }
 
-/* ---------- the little ✕ above him: hide him or close him ---------- */
-let menu = null, btnUntil = 0;
-const MENU_ITEMS = ['😴  Hide for 1 hour', '👋  Close Love Bear'];
-function btnPos() { return { x: clamp(bearX() + 44, 12, W - 12), y: H - FOOT_PAD - 120, r: 10 }; }       // beside his ear
-function btnShown() { return now() < btnUntil && !B.dragging && !menu && !action && B.state !== 'flee'; }
-function inBtn(px, py) { const b = btnPos(); return btnShown() && Math.hypot(px - b.x, py - b.y) < b.r + 4; }
-function menuBox() {
-  const w = 196, rowH = 32, h = MENU_ITEMS.length * rowH + 12;
-  return { x: clamp(bearX() - w / 2, 4, W - w - 4), y: Math.max(4, H - FOOT_PAD - 150 - h), w, h, rowH };
+/* ---------- the ❤️ Love / 👊 Beat buttons that pop up when the mouse is over him ---------- */
+let btnUntil = 0, btnSince = 0;
+function modeBtns() {
+  const cx = bearX(), y = H - FOOT_PAD - 112;
+  return [{ id: 'love', x: clamp(cx - 54, 16, W - 16), y, r: 14, ch: '❤️', label: 'Love' },
+          { id: 'beat', x: clamp(cx + 54, 16, W - 16), y, r: 14, ch: '👊', label: 'Beat' }];
 }
-function menuRow(px, py) {                          // -2 = outside, -1 = inside but not on a row, else row index
-  if (!menu) return -2;
-  const m = menuBox();
-  if (px < m.x || px > m.x + m.w || py < m.y || py > m.y + m.h) return -2;
-  const r = Math.floor((py - m.y - 6) / m.rowH);
-  return r >= 0 && r < MENU_ITEMS.length ? r : -1;
-}
-function drawHideButton() {
-  if (!btnShown()) return;
-  const b = btnPos(), a = clamp((btnUntil - now()) / 0.3, 0, 1);
-  g.globalAlpha = a;
-  g.beginPath(); g.arc(b.x, b.y, b.r, 0, TAU); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#ff8fb0'; g.stroke();
-  g.strokeStyle = '#8a4a64'; g.lineWidth = 2; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(b.x - 3.5, b.y - 3.5); g.lineTo(b.x + 3.5, b.y + 3.5); g.moveTo(b.x + 3.5, b.y - 3.5); g.lineTo(b.x - 3.5, b.y + 3.5); g.stroke();
+function btnsShown() { return now() < btnUntil && !B.dragging && !action && B.state !== 'flee'; }
+function btnAt(px, py) { if (!btnsShown()) return null; return modeBtns().find((b) => Math.hypot(px - b.x, py - b.y) <= b.r + 5) || null; }
+function drawModeBtns() {
+  if (!btnsShown()) return;
+  const pop = clamp((now() - btnSince) / 0.18, 0, 1), fade = clamp((btnUntil - now()) / 0.3, 0, 1);
+  for (const b of modeBtns()) {
+    const on = mode === b.id, sc = (0.5 + 0.5 * pop) * (on ? 1.1 : 1);
+    g.save(); g.globalAlpha = fade; g.translate(b.x, b.y); g.scale(sc, sc);
+    g.shadowColor = 'rgba(60,20,50,0.3)'; g.shadowBlur = 6; g.shadowOffsetY = 1;
+    g.beginPath(); g.arc(0, 0, b.r, 0, TAU); g.fillStyle = on ? (b.id === 'love' ? '#ffe3ec' : '#ffead1') : '#ffffff'; g.fill();
+    g.shadowColor = 'transparent';
+    g.lineWidth = on ? 3 : 1.5; g.strokeStyle = on ? (b.id === 'love' ? '#ff4d79' : '#ff8a00') : '#d9c3cf'; g.stroke();
+    g.font = `15px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(b.ch, 0, 1);
+    g.font = `800 10px ${FONT}`; g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = '#ffffff'; g.strokeText(b.label, 0, b.r + 9);
+    g.fillStyle = on ? (b.id === 'love' ? '#d6245a' : '#c25f00') : '#5a1d3a'; g.fillText(b.label, 0, b.r + 9);
+    g.restore();
+  }
   g.globalAlpha = 1;
 }
-function drawMenu() {
-  if (!menu) return;
-  const m = menuBox();
-  g.save(); g.shadowColor = 'rgba(60,20,50,0.3)'; g.shadowBlur = 10; g.shadowOffsetY = 2;
-  rr(m.x, m.y, m.w, m.h, 12); g.fillStyle = '#ffffff'; g.fill(); g.restore();
-  g.lineWidth = 2; g.strokeStyle = '#ff8fb0'; rr(m.x, m.y, m.w, m.h, 12); g.stroke();
-  g.font = `600 14px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle';
-  MENU_ITEMS.forEach((label, i) => {
-    const y = m.y + 6 + i * m.rowH;
-    if (menu.hoverRow === i) { rr(m.x + 5, y + 1, m.w - 10, m.rowH - 2, 8); g.fillStyle = '#ffe3ec'; g.fill(); }
-    g.fillStyle = '#5a1d3a'; g.fillText(label, m.x + 14, y + m.rowH / 2);
-  });
-}
-function chooseMenu(row) {
-  menu = null; action = null; B.flee = null; fleePending = false;
-  if (row === 0) { setState('wave', 2); say('Bye! See you in an hour 👋', 1.6); setTimeout(() => api.hide(), 1200); }
-  else if (row === 1) { setState('wave', 2); say('Bye bye! Open me again anytime ❤️', 1.8); setTimeout(() => api.quit(), 1400); }
-}
 
-/* ---------- mouse: only the bear (and his little button/menu) catch clicks, everything else goes through ---------- */
+/* ---------- mouse: only the bear (and his two buttons) catch clicks, everything else goes through ---------- */
 function overBear(px, py) {
   const cx = bearX(), feetY = H - FOOT_PAD;
-  return px > cx - 38 && px < cx + 38 && py > feetY - 140 && py < feetY + 2;
+  if (px > cx - 38 && px < cx + 38 && py > feetY - 140 && py < feetY + 2) return true;   // where he stands (still counts while he's down, so fast clicking keeps hitting him)
+  return lying(action) && px > cx - 150 && px < cx + 150 && py > feetY - 62 && py < feetY + 2;   // flat on the floor
 }
 function setThrough(on) { if (on !== clickThrough) { clickThrough = on; api.setClickThrough(on); } }
 let press = null;
 window.addEventListener('mousemove', (e) => {
   if (press) return;
-  const x = e.clientX, y = e.clientY, onBear = overBear(x, y), onBtn = inBtn(x, y), row = menuRow(x, y);
-  if (onBear || onBtn) btnUntil = now() + 1.8;
-  if (menu) { menu.hoverRow = row; if (row !== -2 || onBear) menu.lastOver = now(); }
-  hover = onBear || onBtn || row !== -2;
+  const x = e.clientX, y = e.clientY, onBear = overBear(x, y), onBtn = btnAt(x, y);
+  if (onBear || onBtn) btnUntil = now() + 2.2;
+  hover = onBear || !!onBtn;
   setThrough(!hover);
-  canvas.style.cursor = onBtn || row >= 0 ? 'pointer' : onBear ? 'grab' : 'default';
+  canvas.style.cursor = onBtn ? 'pointer' : onBear ? (mode === 'beat' ? 'crosshair' : 'pointer') : 'default';
 });
 document.documentElement.addEventListener('mouseleave', () => { if (!press) { hover = false; setThrough(true); } });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
-  const x = e.clientX, y = e.clientY;
-  if (menu) { const row = menuRow(x, y); if (row >= 0) { chooseMenu(row); return; } if (row === -1) return; menu = null; }
-  if (e.button === 0 && inBtn(x, y)) { menu = { t: 0, lastOver: now(), hoverRow: -1 }; bubble = null; return; }
+  const x = e.clientX, y = e.clientY, b = btnAt(x, y);
+  if (b) { setMode(b.id); return; }                    // any button on ❤️ / 👊 picks the mode
   if (!overBear(x, y)) return;
+  if (e.button !== 0) e.preventDefault();
   const side = x >= bearX() ? 1 : -1;
-  if (e.button === 2) { press = { right: true, side }; return; }
-  if (e.button !== 0) return;
+  if (e.button !== 0) { press = { other: true, side }; return; }   // right / middle click: just the action
   canvas.setPointerCapture(e.pointerId);
   press = { sx: e.screenX, sy: e.screenY, offX: e.screenX - B.x, offY: e.screenY - B.y, t: now(), moved: false, side };
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!press || press.right) return;
+  if (!press || press.other) return;
   if (!press.moved && Math.hypot(e.screenX - press.sx, e.screenY - press.sy) > 5) {
-    press.moved = true; B.dragging = true; B.onFloor = false; B.target = null; bubble = null; action = null; B.flee = null; fleePending = false; B.vx = 0; B.kv = 0;
+    press.moved = true; B.dragging = true; B.onFloor = false; B.target = null; bubble = null; action = null; B.flee = null;
+    fleePending = false; cryPending = false; B.cryUntil = 0; B.vx = 0; B.kv = 0;
     if (B.sleeping) { B.sleeping = false; particles = []; }
     canvas.style.cursor = 'grabbing';
   }
@@ -669,17 +738,15 @@ canvas.addEventListener('pointermove', (e) => {
 function release() {
   if (!press) return;
   const pr = press; press = null;
-  if (pr.right) { beat(pr.side); return; }
   if (pr.moved) { B.dragging = false; B.vy = 0; if (B.y >= floorY() - 1) { B.y = floorY(); B.onFloor = true; setState('idle', 1); } else { B.onFloor = false; setState('fall', 0); } }
-  else love(pr.side);
-  canvas.style.cursor = 'grab';
+  else doClick(pr.side);
 }
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 
 /* ---------- messages from the app ---------- */
 api.on('screen', (s) => applyScreen(s));
-api.on('settings', (s) => { settings = s || settings; });
+api.on('settings', (s) => { settings = Object.assign(settings, s || {}); });
 api.on('idle', (sec) => {
   idleSec = sec;
   if (!B.sleeping && sec >= NAP_AFTER_SECONDS) goToSleep();
@@ -688,8 +755,8 @@ api.on('idle', (sec) => {
 api.on('command', (cmd) => {
   if (cmd === 'say') { if (B.sleeping) wakeUp(); else { say(randomMessage()); hearts(4, 18); if (B.onFloor && B.state !== 'walk' && !action) setState('wave', 2.4); } }
   else if (cmd === 'come') comeHere();
-  else if (cmd === 'back') { setState('wave', 2.4); say("I'm back! ❤️", 3); }
-  else if (cmd === 'hello-again') { if (B.sleeping) wakeUp(); say(`I'm already here, ${HER_NAME} ❤️`, 3.5); hearts(5, 20); }
+  else if (cmd === 'bye') { action = null; B.flee = null; B.cryUntil = 0; B.sleeping = false; if (B.onFloor) setState('wave', 2); say('Bye bye! 👋', 1.6); }
+  else if (cmd === 'back') { if (B.onFloor) setState('wave', 2.4); say("I'm back! ❤️", 3); hearts(5, 20); }
 });
 
 /* ---------- start ---------- */
@@ -699,6 +766,13 @@ function frame() {
   update(dt); render();
   requestAnimationFrame(frame);
 }
+function showTipOnce() {
+  let seen = false;
+  try { seen = localStorage.getItem('loveBear.tip.v12') === '1'; localStorage.setItem('loveBear.tip.v12', '1'); } catch (e) { /* ignore */ }
+  if (seen) return;
+  setTimeout(() => say('Hover over me and pick ❤️ Love or 👊 Beat, then click me! 😊', 7), 4500);
+  setTimeout(() => say(`To hide me or bring me back: ${settings.hotkey ? 'press ' + settings.hotkey + ' or ' : ''}open Love Bear on the desktop 👋`, 8), 12500);
+}
 (async function start() {
   const [s, st] = await Promise.all([api.getScreen(), api.getSettings().catch(() => null)]);
   if (st) settings = st;
@@ -707,6 +781,7 @@ function frame() {
   await loadFace();
   nextMessageAt = now() + rand(MESSAGE_MINUTES[0], MESSAGE_MINUTES[1]) * 60;
   setState('wave', 3); say(greeting()); hearts(6, 22);
+  showTipOnce();
   syncWindow(); render();
   requestAnimationFrame(frame);
   api.ready();
@@ -714,5 +789,5 @@ function frame() {
 window.addEventListener('resize', resize);
 
 // for testing
-window.__pet = { B, say, love, beat, setState, goToSleep, wakeUp, comeHere, startAction, chooseMenu,
-  get action() { return action; }, get menu() { return menu; }, get bubble() { return bubble; }, get particles() { return particles; }, update, render };
+window.__pet = { B, say, love, beat, doClick, setMode, setState, goToSleep, wakeUp, comeHere, startAction, startCry, fallAngle,
+  get mode() { return mode; }, get action() { return action; }, get bubble() { return bubble; }, get particles() { return particles; }, update, render };
