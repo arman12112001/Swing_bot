@@ -1,0 +1,51 @@
+# Builds the Love Bear desktop pet into a Windows installer and puts it on the repo's Releases page.
+name: Love Bear (Windows app)
+
+on:
+  push:
+    paths:
+      - 'desktop-pet/**'
+      - '.github/workflows/love-bear.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop-pet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci
+      - name: Build the installer
+        run: npx electron-builder --win nsis --publish never
+      - name: Check that the app starts on Windows
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\win-unpacked\Love Bear.exe" -ArgumentList "--smoke-test" -PassThru -Wait
+          Write-Host "smoke test exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LoveBear-Setup
+          path: desktop-pet/dist/LoveBear-Setup-*.exe
+      - name: Put the installer on the Releases page
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="love-bear-v$VERSION"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Love Bear $VERSION" \
+              --notes "Download **LoveBear-Setup-$VERSION.exe** below and open it on the Windows laptop. If Windows says *Windows protected your PC*, click **More info** and then **Run anyway**."
+          fi
+          gh release upload "$TAG" dist/LoveBear-Setup-*.exe --clobber

@@ -1,0 +1,33 @@
+{
+  "name": "love-bear",
+  "productName": "Love Bear",
+  "version": "1.0.0",
+  "description": "A little brown bear that keeps her company on her laptop.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.10.2",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "app.lovebear.desktop",
+    "productName": "Love Bear",
+    "files": ["main.js", "preload.js", "pet.html", "pet.js", "assets/**"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": { "target": "nsis", "icon": "build/icon.png" },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Love Bear",
+      "artifactName": "LoveBear-Setup-${version}.${ext}"
+    }
+  }
+}
