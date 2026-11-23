@@ -4,7 +4,7 @@ The hard version of Super Love Run. **You** are the player (brown bear with your
 
 Play it at: **https://arman12112001.github.io/Swing_bot/hard/**
 
-The original game in `docs/` is not changed. This one has its own saved progress, best score and offline copy, so the two never mix.
+It lives in `docs/hard/` (GitHub Pages publishes the `docs` folder). None of the original game's files are changed, and this one has its own saved progress, best score and offline copy, so the two never mix.
 
 ## What makes it hard
 

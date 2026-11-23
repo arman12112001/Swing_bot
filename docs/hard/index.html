@@ -665,9 +665,27 @@ function drawHead(g, face, cx, bottom, W, tilt, capOut, d, scale, ears) {
   if (capOut) drawCap(g, W, H, d || 1, capOut);
   g.restore();
 }
+// This game lives inside the original game's site. The first time it opens on a phone that has the original game,
+// the original game's offline helper may save THIS page as its own offline copy. Put the original page back.
+async function repairOriginalGameCache() {
+  try {
+    if (!('caches' in window)) return;
+    for (const name of await caches.keys()) {
+      if (!name.startsWith('love-run-game-')) continue;            // only the original game's caches
+      const cache = await caches.open(name);
+      for (const rel of ['../index.html', '../']) {
+        const url = new URL(rel, location.href).href, hit = await cache.match(url);
+        if (!hit || !(await hit.clone().text()).includes('<title>Love Run: HARD</title>')) continue;
+        const fresh = await fetch(url, { cache: 'no-cache' }).catch(() => null);
+        if (fresh && fresh.ok) await cache.put(url, fresh); else await cache.delete(url);
+      }
+    }
+  } catch (e) { /* nothing to repair */ }
+}
 function waitForServiceWorker(timeout) {
   return new Promise((resolve) => {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return resolve(false);
+    repairOriginalGameCache();
     let done = false;
     const fin = (v) => { if (!done) { done = true; resolve(v); } };
     navigator.serviceWorker.addEventListener('controllerchange', () => fin(true));
