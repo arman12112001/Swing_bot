@@ -57,6 +57,16 @@ Press-Hotkey; Start-Sleep 3
 $n = Actions; Click-Bear $false; $results['click after Ctrl+Alt+B hide/show'] = (Actions) -gt $n
 $results['desktop icon hid him'] = [bool]$hid1
 $results['Ctrl+Alt+B hid him'] = [bool]$hid2
+$results['no repairs needed during normal use'] = (Events 'recreate').Count -eq 0
+# Put the window into the state that made clicks disappear (what happened after the laptop slept): he must repair himself.
+Start-Process $exePath -ArgumentList '--test-break'; Start-Sleep 2
+$n = Actions; Click-Bear $false; Click-Bear $false
+$results['clicks work again after the window broke'] = (Actions) -gt $n
+$results['he repaired himself'] = @(Events 'recreate' | Where-Object { $_.reason -eq 'clicks-swallowed' }).Count -gt 0
+# The laptop wakes up: he gets a fresh window and clicks work.
+Start-Process $exePath -ArgumentList '--test-wake'; Start-Sleep 5
+$n = Actions; Click-Bear $false
+$results['click after the laptop wakes up'] = (Actions) -gt $n
 Get-Process -Name 'Love Bear' -ErrorAction SilentlyContinue | Stop-Process -Force
 Write-Host "=== click test ($Label) ==="
 $results.GetEnumerator() | ForEach-Object { Write-Host ("{0,-38} {1}" -f $_.Key, $(if ($_.Value) { 'OK' } else { 'FAILED' })) }

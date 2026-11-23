@@ -12,6 +12,8 @@ A little brown bear with your face that lives on her Windows laptop. He walks al
 - When she's away from the laptop for 2 minutes he **naps** (Zzz) and says "Welcome back!" when she returns.
 - **Tray icon** (his face, near the clock; it may be under the **^** arrow): *Say something*, *Come here*, *Hide him / Bring him back*, *Sound* (off at first), *Start with Windows* (on at first), *Quit*.
 
+**If he ever stops responding:** he repairs himself now (after the laptop wakes up or is unlocked, and whenever his window stops working he quietly gets a fresh one). If something still looks stuck, right-click his tray icon → **Quit**, then open **Love Bear** from the desktop. No need to reinstall.
+
 ## Install it on her laptop
 
 1. Open the repo on GitHub → **Releases** (right side of the repo page) → **Love Bear** → download the newest `LoveBear-Setup-….exe`.

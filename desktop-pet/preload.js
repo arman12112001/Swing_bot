@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('bear', {
   move: (x, y) => ipcRenderer.send('move', { x, y }),
   setClickThrough: (on) => ipcRenderer.send('click-through', !!on),
   ready: () => ipcRenderer.send('ready'),
+  beat: (d) => ipcRenderer.send('beat', d),          // "I'm still alive" every 2 seconds
   event: (data) => ipcRenderer.send('event', data),   // only recorded during the build's click test
   on: (channel, cb) => {
     if (!['screen', 'settings', 'idle', 'command', 'cursor', 'mouse-reset'].includes(channel)) return;

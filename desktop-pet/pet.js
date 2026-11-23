@@ -805,12 +805,20 @@ function showTipOnce() {
   const [s, st] = await Promise.all([api.getScreen(), api.getSettings().catch(() => null)]);
   if (st) settings = st;
   applyScreen(s);
-  B.x = s.workArea.x + s.workArea.width * rand(0.35, 0.65); B.y = floorY();
+  const start = (st && st.start) || { reason: 'start' };
+  // a fresh window after a repair keeps him where he was
+  B.x = Number.isFinite(start.x) ? clamp(start.x, minX(), maxX()) : s.workArea.x + s.workArea.width * rand(0.35, 0.65); B.y = floorY();
   await loadFace();
   nextMessageAt = now() + rand(MESSAGE_MINUTES[0], MESSAGE_MINUTES[1]) * 60;
-  setState('wave', 3); say(greeting()); hearts(6, 22);
+  if (st && st.hidden) { bearHidden = true; setThrough(true); }       // he was hidden: stay hidden
+  else if (start.reason === 'start') { setState('wave', 3); say(greeting()); hearts(6, 22); }
+  else if (start.reason === 'wake') { setState('wave', 3); say(pick(WELCOME_BACK)); hearts(6, 22); }
+  else setState('idle', 2);                                           // quiet repair: just carry on
+  testEvent({ type: 'started', reason: start.reason });
   if (settings.test) setInterval(() => testEvent({ type: 'pos', x: Math.round(B.x), y: Math.round(B.y - 60), state: B.state, bubble: bubble && bubble.text }), 400);
-  else showTipOnce();
+  else if (start.reason === 'start') showTipOnce();
+  setInterval(() => { if (api.beat) api.beat({ x: Math.round(B.x) }); }, 2000);   // tell the app he's still alive
+  if (api.beat) api.beat({ x: Math.round(B.x) });
   syncWindow(); render();
   requestAnimationFrame(frame);
   api.ready();

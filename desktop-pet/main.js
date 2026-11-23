@@ -3,6 +3,8 @@
 // so clicks everywhere else go straight through to whatever she is working on.
 // To know when the mouse is over him, the app checks the cursor position itself many times a second
 // (it doesn't rely on Windows mouse hooks, which Windows can silently drop after sleep or hide/show).
+// Self-repair: after the laptop wakes up or is unlocked, and whenever his window stops working
+// (swallows clicks, stops drawing, crashes), the app quietly builds him a fresh window.
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage, powerMonitor, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -15,6 +17,7 @@ const HOTKEY = 'Control+Alt+B', HOTKEY_LABEL = 'Ctrl+Alt+B';   // hides him / br
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
 let win = null, tray = null, hidden = false, hotkeyOk = false;
+let startInfo = { reason: 'start', x: null }, bearX = null, lastBeat = Date.now(), recreating = false, lastRecreate = 0, eatenFixes = [];
 let settings = { sound: false, startWithWindows: true };
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
@@ -36,7 +39,7 @@ function screenInfo() {
 
 function createWindow() {
   const s = screenInfo();
-  win = new BrowserWindow({
+  const w = new BrowserWindow({
     width: WIN_W, height: WIN_H,
     x: Math.round(s.workArea.x + s.workArea.width / 2 - WIN_W / 2), y: s.workArea.y + s.workArea.height - WIN_H,
     transparent: true, frame: false, resizable: false, movable: false, minimizable: false, maximizable: false,
@@ -44,17 +47,50 @@ function createWindow() {
     backgroundColor: '#00000000', title: 'Love Bear',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false, contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  win.setAlwaysOnTop(true, 'screen-saver');
-  win.setIgnoreMouseEvents(true);
-  win.setMenu(null);
-  if (TEST_LOG && process.platform === 'win32') {   // test only: which raw mouse messages reach the window
-    for (const [msg, name] of [[0x21, 'WM_MOUSEACTIVATE'], [0x201, 'WM_LBUTTONDOWN'], [0x204, 'WM_RBUTTONDOWN'], [0x210, 'WM_PARENTNOTIFY']]) win.hookWindowMessage(msg, () => testLog({ type: 'msg', name }));
-    let lastHit = 0;
-    win.hookWindowMessage(0x84, () => { const n = Date.now(); if (n - lastHit > 400) { lastHit = n; testLog({ type: 'msg', name: 'WM_NCHITTEST' }); } });
+  w.setAlwaysOnTop(true, 'screen-saver');
+  w.setIgnoreMouseEvents(true);
+  w.setMenu(null);
+  if (process.platform === 'win32') {
+    // A working window never gets WM_MOUSEACTIVATE (it can't be activated). Getting one means Windows put the window
+    // into a state where it throws clicks away: build a fresh window.
+    w.hookWindowMessage(0x21, () => { testLog({ type: 'msg', name: 'WM_MOUSEACTIVATE' }); if (w === win) setTimeout(() => clicksEaten(), 0); });
+    if (TEST_LOG) {                                  // test only: which other raw mouse messages reach the window
+      for (const [msg, name] of [[0x201, 'WM_LBUTTONDOWN'], [0x204, 'WM_RBUTTONDOWN'], [0x210, 'WM_PARENTNOTIFY']]) w.hookWindowMessage(msg, () => testLog({ type: 'msg', name }));
+    }
   }
-  win.loadFile(path.join(__dirname, 'pet.html'));
-  win.once('ready-to-show', () => win.showInactive());
-  win.on('closed', () => { win = null; });
+  w.webContents.on('render-process-gone', () => { if (w === win) recreateWindow('page-crashed'); });
+  w.on('unresponsive', () => { if (w === win) recreateWindow('page-frozen'); });
+  w.loadFile(path.join(__dirname, 'pet.html'));
+  w.once('ready-to-show', () => w.showInactive());
+  w.on('closed', () => { if (win === w) win = null; });
+  win = w;
+  lastBeat = Date.now();
+  return w;
+}
+// Replace his window with a brand-new one (same as restarting the app, but without quitting).
+function recreateWindow(reason) {
+  if (recreating || SMOKE || !app.isReady()) return;
+  recreating = true; lastRecreate = Date.now();
+  testLog({ type: 'recreate', reason });
+  const old = win;
+  startInfo = { reason, x: bearX };
+  createWindow();                                    // the new window exists before the old one goes (the app must not quit)
+  let done = false;
+  const swap = () => { if (done) return; done = true; if (old && !old.isDestroyed()) old.destroy(); recreating = false; };
+  win.once('ready-to-show', () => setTimeout(swap, 150));
+  setTimeout(swap, 6000);
+}
+function clicksEaten() {
+  const now = Date.now();
+  eatenFixes = eatenFixes.filter((t) => now - t < 120000);
+  if (eatenFixes.length >= 3) return;                 // didn't help 3 times in 2 minutes: stop trying (no endless restarts)
+  eatenFixes.push(now);
+  recreateWindow('clicks-swallowed');
+}
+function afterWake(reason) {                          // laptop opened / unlocked: give him a fresh window
+  send('idle', 0);
+  if (Date.now() - lastRecreate < 8000) return;
+  setTimeout(() => recreateWindow(reason), 1500);
 }
 
 function send(channel, data) { if (win && !win.isDestroyed()) win.webContents.send(channel, data); }
@@ -126,15 +162,17 @@ function createTray() {
 
 // ---- messages from the bear's page ----
 ipcMain.handle('screen', () => screenInfo());
-ipcMain.handle('settings', () => Object.assign({}, settings, { hotkey: hotkeyOk ? HOTKEY_LABEL : '', test: !!TEST_LOG }));
+ipcMain.handle('settings', () => Object.assign({}, settings, { hotkey: hotkeyOk ? HOTKEY_LABEL : '', test: !!TEST_LOG, hidden, start: startInfo }));
+const fromBear = (e) => win && !win.isDestroyed() && e.sender === win.webContents;   // ignore an old window that's being replaced
+ipcMain.on('beat', (e, d) => { if (!fromBear(e)) return; lastBeat = Date.now(); if (d && Number.isFinite(d.x)) bearX = d.x; });
 ipcMain.on('move', (e, p) => {
-  if (!win || win.isDestroyed() || !p) return;
+  if (!fromBear(e) || !p) return;
   const x = Math.round(p.x), y = Math.round(p.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   win.setBounds({ x, y, width: WIN_W, height: WIN_H });
 });
 ipcMain.on('click-through', (e, on) => {
-  if (!win || win.isDestroyed()) return;
+  if (!fromBear(e)) return;
   win.setIgnoreMouseEvents(!!on);
   testLog({ type: 'ignore', on: !!on });
 });
@@ -154,7 +192,11 @@ ipcMain.on('ready', () => {
 });
 
 // Opening Love Bear again (desktop icon / Start menu) while he's running hides him or brings him back.
-app.on('second-instance', () => toggleBear());
+app.on('second-instance', (e, argv) => {
+  if (TEST_LOG && argv.includes('--test-break')) { if (win) { win.hide(); win.showInactive(); } testLog({ type: 'test-break' }); return; }   // test only
+  if (TEST_LOG && argv.includes('--test-wake')) { afterWake('wake'); return; }                                                           // test only
+  toggleBear();
+});
 
 app.whenReady().then(() => {
   if (process.platform === 'win32') app.setAppUserModelId('app.lovebear.desktop');
@@ -167,8 +209,11 @@ app.whenReady().then(() => {
   setInterval(() => send('idle', powerMonitor.getSystemIdleTime()), 5000);
   setInterval(pollCursor, 40);
   powerMonitor.on('lock-screen', () => send('idle', 9999));
-  powerMonitor.on('unlock-screen', () => { send('idle', 0); resetMouse(); });
-  powerMonitor.on('resume', () => { send('idle', 0); resetMouse(); });
+  powerMonitor.on('unlock-screen', () => afterWake('wake'));
+  powerMonitor.on('resume', () => afterWake('wake'));
+  app.on('child-process-gone', (e, d) => { if (d && d.type === 'GPU') recreateWindow('graphics-crashed'); });
+  // his page reports in every 2 seconds; if it stops (frozen), build a fresh window
+  setInterval(() => { if (win && !recreating && Date.now() - lastBeat > 15000) recreateWindow('no-heartbeat'); }, 5000);
   const refresh = () => { send('screen', screenInfo()); resetMouse(); };
   screen.on('display-metrics-changed', refresh);
   screen.on('display-added', refresh);
